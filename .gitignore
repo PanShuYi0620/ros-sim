@@ -1,0 +1,31 @@
+# ---- 构建产物 ----
+build/
+cmake-build-*/
+out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+*.o
+*.obj
+*.exe
+*.dll
+*.lib
+*.pdb
+*.ilk
+*.exp
+
+# ---- IDE ----
+.idea/
+.vscode/
+.vs/
+*.user
+*.suo
+
+# ---- 运行日志 ----
+logs/*.log
+logs/*.txt
+
+# ---- 系统 ----
+Thumbs.db
+.DS_Store
