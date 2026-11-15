@@ -1,23 +1,27 @@
-#include "ros/exception.hpp"
+#include <memory>
+
 #include "ros/logger.hpp"
-#include "ros/message.hpp"
+#include "ros/publisher.hpp"
+#include "ros/ros.hpp"
+#include "ros/subscriber.hpp"
 
 int main() {
     auto& logger = ros_sim::Logger::instance();
+    logger.info("========== 系统启动 ==========");
 
-    try {
-        ros_sim::Message msg("温度 25.3");
-        logger.info("创建消息: " + msg.toString());
-    } catch (const ros_sim::MessageException& e) {
-        logger.error(e.what());
-    }
+    auto publisher = std::make_shared<ros_sim::Publisher>("pub_temp", "/room/temp");
+    auto display = std::make_shared<ros_sim::Subscriber>("sub_display", "/room/temp");
+    auto app = std::make_shared<ros_sim::Subscriber>("sub_app", "/room/temp");
 
-    try {
-        ros_sim::Message empty("");
-        logger.info("不该走到这里");
-    } catch (const ros_sim::MessageException& e) {
-        logger.error("预期异常: " + std::string(e.what()));
-    }
+    publisher->init();
+    display->init();
+    app->init();
+
+    publisher->publish("25.3");
+    publisher->publish("25.8");
+
+    ros_sim::ROS::instance().shutdownAll();
+    logger.info("========== 系统关闭 ==========");
 
     return 0;
 }

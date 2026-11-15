@@ -17,6 +17,10 @@ add_executable(ros_sim
     src/main.cpp
     src/logger.cpp
     src/message.cpp
+    src/node.cpp
+    src/ros.cpp
+    src/publisher.cpp
+    src/subscriber.cpp
 )
 
 target_include_directories(ros_sim PRIVATE include)
