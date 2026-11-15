@@ -9,16 +9,23 @@ int main() {
     auto& logger = ros_sim::Logger::instance();
     logger.info("========== 系统启动 ==========");
 
-    auto publisher = std::make_shared<ros_sim::Publisher>("pub_temp", "/room/temp");
-    auto display = std::make_shared<ros_sim::Subscriber>("sub_display", "/room/temp");
-    auto app = std::make_shared<ros_sim::Subscriber>("sub_app", "/room/temp");
+    auto temp_publisher = std::make_shared<ros_sim::Publisher>("pub_temp", "/room/temp");
+    auto temp_display = std::make_shared<ros_sim::Subscriber>("sub_temp_display", "/room/temp");
+    auto temp_app = std::make_shared<ros_sim::Subscriber>("sub_temp_app", "/room/temp");
+    //温度topic
+    auto humid_publisher = std::make_shared<ros_sim::Publisher>("pub_humid", "/room/humid");
+    auto humid_display = std::make_shared<ros_sim::Subscriber>("sub_humid_display", "/room/humid");
+    auto humid_app = std::make_shared<ros_sim::Subscriber>("sub_humid_app", "/room/humid");
+    temp_publisher->init();
+    temp_display->init();
+    temp_app->init();
+    humid_publisher->init();
+    humid_display->init();
+    humid_app->init();
 
-    publisher->init();
-    display->init();
-    app->init();
-
-    publisher->publish("25.3");
-    publisher->publish("25.8");
+    temp_publisher->publish("25.3");
+    temp_publisher->publish("25.8");
+    humid_publisher->publish("60%");
 
     ros_sim::ROS::instance().shutdownAll();
     logger.info("========== 系统关闭 ==========");
