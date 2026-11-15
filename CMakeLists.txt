@@ -15,6 +15,7 @@ endif()
 
 add_executable(ros_sim
     src/main.cpp
+    src/logger.cpp
 )
 
 target_include_directories(ros_sim PRIVATE include)

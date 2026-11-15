@@ -1,6 +1,11 @@
-#include <iostream>
+#include "ros/logger.hpp"
 
 int main() {
-    std::cout << "ros_sim v0.1.0 —— C++ 模拟 ROS 节点通信系统\n";
+    auto& logger = ros_sim::Logger::instance();
+
+    logger.info("程序启动");
+    logger.warn("这是一条警告");
+    logger.error("这是一条错误");
+
     return 0;
 }
