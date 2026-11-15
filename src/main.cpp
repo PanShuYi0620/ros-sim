@@ -1,11 +1,23 @@
+#include "ros/exception.hpp"
 #include "ros/logger.hpp"
+#include "ros/message.hpp"
 
 int main() {
     auto& logger = ros_sim::Logger::instance();
 
-    logger.info("程序启动");
-    logger.warn("这是一条警告");
-    logger.error("这是一条错误");
+    try {
+        ros_sim::Message msg("温度 25.3");
+        logger.info("创建消息: " + msg.toString());
+    } catch (const ros_sim::MessageException& e) {
+        logger.error(e.what());
+    }
+
+    try {
+        ros_sim::Message empty("");
+        logger.info("不该走到这里");
+    } catch (const ros_sim::MessageException& e) {
+        logger.error("预期异常: " + std::string(e.what()));
+    }
 
     return 0;
 }
