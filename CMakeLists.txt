@@ -13,8 +13,8 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(ros_sim
-    src/main.cpp
+# 核心库：除 main 外的所有实现，主程序和测试程序共用
+add_library(ros_core STATIC
     src/logger.cpp
     src/message.cpp
     src/sensor_message.cpp
@@ -23,5 +23,16 @@ add_executable(ros_sim
     src/publisher.cpp
     src/subscriber.cpp
 )
+target_include_directories(ros_core PUBLIC include)
 
-target_include_directories(ros_sim PRIVATE include)
+# 演示程序
+add_executable(ros_sim
+    src/main.cpp
+)
+target_link_libraries(ros_sim PRIVATE ros_core)
+
+# 测试程序
+add_executable(ros_tests
+    tests/test_main.cpp
+)
+target_link_libraries(ros_tests PRIVATE ros_core)
