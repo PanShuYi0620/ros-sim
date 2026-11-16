@@ -17,6 +17,7 @@ add_executable(ros_sim
     src/main.cpp
     src/logger.cpp
     src/message.cpp
+    src/sensor_message.cpp
     src/node.cpp
     src/ros.cpp
     src/publisher.cpp

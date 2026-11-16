@@ -42,8 +42,8 @@ void Subscriber::shutdown() {
 }
 
 void Subscriber::receive(const Message& message) {
-    Logger::instance().info("[Node:" + name() + "] 收到消息: " + message.content() +
-                            " @ " + message.timestamp());
+    // toString() 是虚函数：如果传进来的是 SensorMessage，会打印出它的额外字段
+    Logger::instance().info("[Node:" + name() + "] 收到消息: " + message.toString());
 }
 
 }  // namespace ros_sim
