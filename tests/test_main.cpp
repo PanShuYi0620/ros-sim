@@ -2,6 +2,10 @@
 #include <memory>
 #include <string>
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #include "ros/exception.hpp"
 #include "ros/message.hpp"
 #include "ros/publisher.hpp"
@@ -102,6 +106,10 @@ void testSensorMessage() {
 }  // namespace
 
 int main() {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);   // 让 Windows 控制台按 UTF-8 显示中文
+#endif
+
     testMessage();
     testNodeName();
     testDuplicatedName();
