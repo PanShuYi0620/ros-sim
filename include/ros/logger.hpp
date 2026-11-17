@@ -20,6 +20,9 @@ public:
     void warn(const std::string& message);
     void error(const std::string& message);
 
+    // 是否同时输出到控制台（默认 true）。交互式控制台可以关掉，只看日志文件。
+    void setConsoleEnabled(bool enabled) noexcept { consoleEnabled_ = enabled; }
+
 private:
     Logger() = default;
     ~Logger() = default;
@@ -28,6 +31,7 @@ private:
     static const char* levelName(LogLevel level);
     static std::string nowTimestamp();
     std::ofstream file_;
+    bool consoleEnabled_{true};
 };
 
 }  // namespace ros_sim

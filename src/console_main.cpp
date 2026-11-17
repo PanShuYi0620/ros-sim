@@ -27,6 +27,9 @@ namespace {
 class Console {
 public:
     void run() {
+        // 控制台只保留交互内容，系统日志只写文件
+        ros_sim::Logger::instance().setConsoleEnabled(false);
+
         printHelp();
 
         std::string line;
@@ -90,6 +93,7 @@ private:
         }
 
         pending_publishers_.insert(name);
+        std::cout << "发布者 " << name << " 已创建（尚未分配话题）\n";
         narrative("[Node:" + name + "] 发布者已创建（尚未分配话题）");
     }
 
@@ -120,6 +124,7 @@ private:
             active_publishers_[name] = publisher;
             pending_publishers_.erase(name);
             topics_[topic] = TopicInfo{name, {name}};
+            std::cout << "话题 " << topic << " 已创建，创建者 " << name << "\n";
             narrative("[Topic:" + topic + "] 话题由 " + name + " 创建");
         } catch (const std::exception& e) {
             std::cout << "创建话题失败: " << e.what() << "\n";
@@ -149,6 +154,7 @@ private:
             active_publishers_[name] = publisher;
             pending_publishers_.erase(name);
             topics_[topic].publishers.push_back(name);
+            std::cout << "发布者 " << name << " 已加入话题 " << topic << "\n";
             narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
         } catch (const std::exception& e) {
             std::cout << "加入话题失败: " << e.what() << "\n";
@@ -176,6 +182,7 @@ private:
             auto subscriber = std::make_shared<ros_sim::Subscriber>(name, topic);
             subscriber->init();
             subscribers_[name] = subscriber;
+            std::cout << "订阅者 " << name << " 已订阅 " << topic << "\n";
             narrative("[Topic:" + topic + "] 订阅者 " + name + " 订阅了话题");
         } catch (const std::exception& e) {
             std::cout << "创建订阅者失败: " << e.what() << "\n";
@@ -217,6 +224,8 @@ private:
         const std::string topic = it->second->topic();
         try {
             it->second->publish(content);
+            std::cout << "已发送到 " << topic << "，"
+                      << ros_sim::ROS::instance().subscriberCount(topic) << " 个订阅者收到\n";
             narrative("[Topic:" + topic + "] " + name + " 发布完成，共 " +
                       std::to_string(ros_sim::ROS::instance().subscriberCount(topic)) +
                       " 个订阅者收到");

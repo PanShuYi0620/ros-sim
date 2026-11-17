@@ -39,7 +39,9 @@ void Logger::log(LogLevel level, const std::string& message) {
     const std::string line =
         "[" + nowTimestamp() + "] [" + levelName(level) + "] " + message;
 
-    std::cout << line << std::endl;
+    if (consoleEnabled_) {
+        std::cout << line << std::endl;
+    }
 
     if (!file_.is_open()) {
         std::filesystem::create_directories("logs");
