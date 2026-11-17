@@ -241,12 +241,13 @@ ROS& ROS::instance() {
 
 `publisher.hpp`、`subscriber.hpp` 不包含 `ros.hpp`，仅在 `.cpp` 中包含，避免循环依赖；`ros.hpp` 包含前两者。全部头文件使用 `#pragma once`。
 
-### ADR-10 构建拆分为核心库 + 两个可执行程序
+### ADR-10 构建拆分为核心库 + 三个可执行程序
 
 - `ros_core`（静态库）：除 main 外的全部实现；
 - `ros_sim`：演示程序；
-- `ros_tests`：测试程序。
-- **理由**：主程序与测试各有一个 `main()`，必须分开链接；拆库后两边共享同一份实现。
+- `ros_tests`：测试程序；
+- `ros_console`：交互式控制台。
+- **理由**：三个程序各有自己的 `main()`，必须分开链接；拆库后共享同一份实现。
 
 ### ADR-11 Windows 控制台按 UTF-8 输出
 
@@ -662,7 +663,7 @@ cmake --build build
 | 日志持久化 | Logger 内部写文件，失败降级 | 无 |
 | 全局异常处理 | main 分类捕获，返回退出码 | 无 |
 | 服务/客户端（未实现） | 新增 Service/Client 类 + ROS 服务注册表 | 新增接口，不改现有 |
-| 动态增删节点（未实现） | ROS 增加 unregister 接口 | 新增接口 |
+| 动态增删节点（已实现） | `ros_console` 命令 + ROS `unregister` 接口 | 新增接口，不改现有 |
 
 ---
 
