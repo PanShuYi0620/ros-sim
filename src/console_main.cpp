@@ -23,13 +23,17 @@
 namespace {
 
 namespace color {
-constexpr const char* Reset = "\033[0m";
+// Reset 只重置前景色和加粗，保留背景色
+constexpr const char* Reset = "\033[39m\033[22m";
 constexpr const char* Bold = "\033[1m";
 constexpr const char* Dim = "\033[90m";
 constexpr const char* Green = "\033[32m";
 constexpr const char* Cyan = "\033[36m";
 constexpr const char* Yellow = "\033[33m";
 constexpr const char* Red = "\033[31m";
+// 背景：深蓝色；要换颜色改这里（256 色：\033[48;5;N m，N 取 17 深蓝 / 236 深灰）
+constexpr const char* Background = "\033[48;5;17m";
+constexpr const char* BrightWhite = "\033[97m";
 }  // namespace color
 
 void printOk(const std::string& text) {
@@ -50,6 +54,9 @@ public:
     void run() {
         ros_sim::Logger::instance().setConsoleEnabled(false);
         loadState();
+
+        // 背景 + 亮白前景，并清屏
+        std::cout << color::Background << color::BrightWhite << "\033[2J\033[H";
 
         std::cout << color::Cyan << color::Bold
                   << "============================================\n"
@@ -78,6 +85,7 @@ public:
         ros_sim::ROS::instance().shutdownAll();
         std::cout << color::Green << "✔ " << color::Reset
                   << "已退出（状态已保存，下次启动会恢复）\n";
+        std::cout << "\033[0m";   // 退出前恢复正常配色
     }
 
 private:
