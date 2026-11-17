@@ -1,10 +1,12 @@
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -28,6 +30,7 @@ class Console {
 public:
     void run() {
         ros_sim::Logger::instance().setConsoleEnabled(false);
+        loadState();
         printHelp();
 
         std::string line;
@@ -44,8 +47,9 @@ public:
             }
         }
 
+        saveState();
         ros_sim::ROS::instance().shutdownAll();
-        std::cout << "已退出\n";
+        std::cout << "已退出（状态已保存，下次启动会恢复）\n";
     }
 
 private:
@@ -468,6 +472,139 @@ private:
         for (const auto& entry : subscribers_) {
             std::cout << "  " << entry.first << " -> " << entry.second->topic()
                       << "（已收 " << entry.second->inbox().size() << " 条）\n";
+        }
+    }
+
+    static const char* stateFile() { return "console_state.txt"; }
+
+    void loadState() {
+        std::ifstream in(stateFile());
+        if (!in.is_open()) {
+            return;
+        }
+
+        std::vector<std::tuple<std::string, std::string, std::size_t>> topicRecords;
+        std::vector<std::pair<std::string, std::string>> removedRecords;
+        std::vector<std::pair<std::string, std::string>> pubRecords;
+        std::vector<std::string> pendingPubRecords;
+        std::vector<std::pair<std::string, std::string>> subRecords;
+        std::vector<std::string> pendingSubRecords;
+        std::vector<std::string> deletedTopicRecords;
+        std::map<std::string, std::vector<std::string>> inboxRecords;
+
+        std::string line;
+        while (std::getline(in, line)) {
+            std::vector<std::string> fields;
+            std::string part;
+            std::istringstream iss(line);
+            while (std::getline(iss, part, '\t')) {
+                fields.push_back(part);
+            }
+            if (fields.empty()) {
+                continue;
+            }
+
+            const std::string& tag = fields[0];
+            if (tag == "TOPIC" && fields.size() >= 4) {
+                topicRecords.emplace_back(fields[1], fields[2], static_cast<std::size_t>(std::stoul(fields[3])));
+            } else if (tag == "REMOVED" && fields.size() >= 3) {
+                removedRecords.emplace_back(fields[1], fields[2]);
+            } else if (tag == "PUB" && fields.size() >= 3) {
+                pubRecords.emplace_back(fields[1], fields[2]);
+            } else if (tag == "PUBPEND" && fields.size() >= 2) {
+                pendingPubRecords.push_back(fields[1]);
+            } else if (tag == "SUB" && fields.size() >= 3) {
+                subRecords.emplace_back(fields[1], fields[2]);
+            } else if (tag == "SUBPEND" && fields.size() >= 2) {
+                pendingSubRecords.push_back(fields[1]);
+            } else if (tag == "DELTOPIC" && fields.size() >= 2) {
+                deletedTopicRecords.push_back(fields[1]);
+            } else if (tag == "MSG" && fields.size() >= 3) {
+                inboxRecords[fields[1]].push_back(fields[2]);
+            }
+        }
+
+        for (const auto& record : topicRecords) {
+            TopicInfo info;
+            info.creator = std::get<1>(record);
+            info.message_count = std::get<2>(record);
+            topics_[std::get<0>(record)] = info;
+        }
+        for (const auto& record : removedRecords) {
+            auto it = topics_.find(record.first);
+            if (it != topics_.end()) {
+                it->second.removed_publishers.insert(record.second);
+            }
+        }
+        for (const auto& record : pubRecords) {
+            try {
+                auto publisher = std::make_shared<ros_sim::Publisher>(record.first, record.second);
+                publisher->init();
+                active_publishers_[record.first] = publisher;
+                topics_[record.second].publishers.push_back(record.first);
+            } catch (const std::exception&) {
+                // 状态文件里的脏数据直接跳过，不影响启动
+            }
+        }
+        for (const auto& name : pendingPubRecords) {
+            pending_publishers_.insert(name);
+        }
+        for (const auto& record : subRecords) {
+            try {
+                auto subscriber = std::make_shared<ros_sim::Subscriber>(record.first, record.second);
+                subscriber->init();
+                auto inboxIt = inboxRecords.find(record.first);
+                if (inboxIt != inboxRecords.end()) {
+                    subscriber->restoreInbox(inboxIt->second);
+                }
+                subscribers_[record.first] = subscriber;
+            } catch (const std::exception&) {
+            }
+        }
+        for (const auto& name : pendingSubRecords) {
+            pending_subscribers_.insert(name);
+        }
+        for (const auto& name : deletedTopicRecords) {
+            deleted_topics_.insert(name);
+        }
+
+        std::cout << "已恢复上次状态：话题 " << topics_.size() << " 个，发布者 "
+                  << active_publishers_.size() << " 个，订阅者 " << subscribers_.size()
+                  << " 个\n";
+    }
+
+    void saveState() const {
+        std::ofstream out(stateFile(), std::ios::trunc);
+        if (!out.is_open()) {
+            return;
+        }
+
+        for (const auto& entry : topics_) {
+            out << "TOPIC\t" << entry.first << '\t' << entry.second.creator << '\t'
+                << entry.second.message_count << '\n';
+            for (const auto& name : entry.second.removed_publishers) {
+                out << "REMOVED\t" << entry.first << '\t' << name << '\n';
+            }
+        }
+        for (const auto& name : pending_publishers_) {
+            out << "PUBPEND\t" << name << '\n';
+        }
+        for (const auto& entry : active_publishers_) {
+            out << "PUB\t" << entry.first << '\t' << entry.second->topic() << '\n';
+        }
+        for (const auto& name : pending_subscribers_) {
+            out << "SUBPEND\t" << name << '\n';
+        }
+        for (const auto& entry : subscribers_) {
+            out << "SUB\t" << entry.first << '\t' << entry.second->topic() << '\n';
+            for (const auto& message : entry.second->inbox()) {
+                std::string clean = message;
+                std::replace(clean.begin(), clean.end(), '\t', ' ');
+                out << "MSG\t" << entry.first << '\t' << clean << '\n';
+            }
+        }
+        for (const auto& name : deleted_topics_) {
+            out << "DELTOPIC\t" << name << '\n';
         }
     }
 

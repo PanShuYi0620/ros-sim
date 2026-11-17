@@ -51,4 +51,8 @@ void Subscriber::receive(const Message& message) {
     }
 }
 
+void Subscriber::restoreInbox(std::vector<std::string> messages) {
+    inbox_ = std::move(messages);
+}
+
 }  // namespace ros_sim

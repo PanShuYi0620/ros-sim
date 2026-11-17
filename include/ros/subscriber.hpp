@@ -23,6 +23,9 @@ public:
     // 收到的消息（最多保留最近 100 条），供交互式控制台查看
     const std::vector<std::string>& inbox() const noexcept { return inbox_; }
 
+    // 从持久化状态恢复消息箱
+    void restoreInbox(std::vector<std::string> messages);
+
 private:
     std::string topic_;
     bool initialized_{false};
