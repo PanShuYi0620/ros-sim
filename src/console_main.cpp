@@ -23,8 +23,9 @@
 namespace {
 
 // 交互式控制台
-// 发布者：先创建，再让它创建话题或加入已有话题
-// 订阅者：先创建，再绑定到已存在的话题
+// 发布者：先创建，再绑定一个或多个话题（topic 创建 / join 加入）
+// 订阅者：先创建，再通过 listen 绑定到已存在的话题
+// 发送时必须指明「哪个发布者」+「哪个话题」，避免多话题时歧义
 // 控制台只显示交互内容，系统日志写入 logs/ros_sim.log
 class Console {
 public:
@@ -61,6 +62,9 @@ private:
         std::size_t message_count{0};
     };
 
+    // 一个节点名可以对应多个话题，所以是 名字 -> (话题 -> 发布者对象)
+    using PublisherMap = std::map<std::string, std::shared_ptr<ros_sim::Publisher>>;
+
     bool handle(const std::string& line) {
         std::istringstream iss(line);
         std::string command;
@@ -84,36 +88,45 @@ private:
         return true;
     }
 
-    bool nameTaken(const std::string& name) const {
+    static std::string internalName(const std::string& node, const std::string& topic) {
+        return node + "@" + topic;
+    }
+
+    bool nodeExists(const std::string& name) const {
         return pending_publishers_.count(name) != 0 || active_publishers_.count(name) != 0 ||
                pending_subscribers_.count(name) != 0 || subscribers_.count(name) != 0;
     }
 
-    // pub <名字>：只创建发布者
+    bool publisherBound(const std::string& node, const std::string& topic) const {
+        auto it = active_publishers_.find(node);
+        return it != active_publishers_.end() && it->second.count(topic) != 0;
+    }
+
+    // pub <名字>
     void createPublisher(std::istringstream& iss) {
         std::string name;
         if (!(iss >> name)) {
             std::cout << "用法: pub <名字>\n";
             return;
         }
-        if (nameTaken(name)) {
+        if (nodeExists(name)) {
             std::cout << "名字 " << name << " 已被占用\n";
             return;
         }
 
         pending_publishers_.insert(name);
-        std::cout << "发布者 " << name << " 已创建（尚未分配话题）\n";
-        narrative("[Node:" + name + "] 发布者已创建（尚未分配话题）");
+        std::cout << "发布者 " << name << " 已创建（尚未绑定话题）\n";
+        narrative("[Node:" + name + "] 发布者已创建（尚未绑定话题）");
     }
 
-    // sub <名字>：只创建订阅者
+    // sub <名字>
     void createSubscriber(std::istringstream& iss) {
         std::string name;
         if (!(iss >> name)) {
             std::cout << "用法: sub <名字>\n";
             return;
         }
-        if (nameTaken(name)) {
+        if (nodeExists(name)) {
             std::cout << "名字 " << name << " 已被占用\n";
             return;
         }
@@ -123,7 +136,7 @@ private:
         narrative("[Node:" + name + "] 订阅者已创建（尚未订阅话题）");
     }
 
-    // topic <发布者> <话题>：发布者创建话题
+    // topic <发布者> <话题>：创建新话题并绑定
     void assignTopic(std::istringstream& iss) {
         std::string name;
         std::string topic;
@@ -131,28 +144,27 @@ private:
             std::cout << "用法: topic <发布者> <话题>\n";
             return;
         }
-        if (pending_publishers_.count(name) == 0) {
-            if (active_publishers_.count(name) != 0) {
-                std::cout << "发布者 " << name << " 已经有话题了\n";
-            } else {
-                std::cout << "没有这个发布者: " << name << "\n";
-            }
+        if (!nodeExists(name)) {
+            std::cout << "没有这个发布者: " << name << "\n";
             return;
         }
         if (topics_.count(topic) != 0) {
             std::cout << "话题 " << topic << " 已存在，请用 join 加入\n";
             return;
         }
+        if (publisherBound(name, topic)) {
+            std::cout << "发布者 " << name << " 已经绑定话题 " << topic << "\n";
+            return;
+        }
 
-        const bool was_deleted = deleted_topics_.count(topic) != 0;
-        if (was_deleted) {
+        if (deleted_topics_.count(topic) != 0) {
             deleted_topics_.erase(topic);
         }
 
         try {
-            auto publisher = std::make_shared<ros_sim::Publisher>(name, topic);
+            auto publisher = std::make_shared<ros_sim::Publisher>(internalName(name, topic), topic);
             publisher->init();
-            active_publishers_[name] = publisher;
+            active_publishers_[name][topic] = publisher;
             pending_publishers_.erase(name);
             topics_[topic] = TopicInfo{name, {name}, {}, 0};
             std::cout << "话题 " << topic << " 已创建，创建者 " << name << "\n";
@@ -162,7 +174,7 @@ private:
         }
     }
 
-    // join <发布者> <话题>：发布者加入已有话题
+    // join <发布者> <话题>：把已有发布者绑定到已有话题
     void joinTopic(std::istringstream& iss) {
         std::string name;
         std::string topic;
@@ -170,8 +182,8 @@ private:
             std::cout << "用法: join <发布者> <话题>\n";
             return;
         }
-        if (pending_publishers_.count(name) == 0) {
-            std::cout << "没有可用的发布者: " << name << "\n";
+        if (!nodeExists(name)) {
+            std::cout << "没有这个发布者: " << name << "\n";
             return;
         }
         if (deleted_topics_.count(topic) != 0) {
@@ -182,21 +194,25 @@ private:
             std::cout << "话题 " << topic << " 不存在\n";
             return;
         }
+        if (publisherBound(name, topic)) {
+            std::cout << "发布者 " << name << " 已经绑定话题 " << topic << "\n";
+            return;
+        }
 
         try {
-            auto publisher = std::make_shared<ros_sim::Publisher>(name, topic);
+            auto publisher = std::make_shared<ros_sim::Publisher>(internalName(name, topic), topic);
             publisher->init();
-            active_publishers_[name] = publisher;
+            active_publishers_[name][topic] = publisher;
             pending_publishers_.erase(name);
             topics_[topic].publishers.push_back(name);
-            std::cout << "发布者 " << name << " 已加入话题 " << topic << "\n";
+            std::cout << "发布者 " << name << " 已绑定话题 " << topic << "\n";
             narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
         } catch (const std::exception& e) {
-            std::cout << "加入话题失败: " << e.what() << "\n";
+            std::cout << "绑定话题失败: " << e.what() << "\n";
         }
     }
 
-    // listen <订阅者> <话题>：订阅者绑定到已存在的话题
+    // listen <订阅者> <话题>
     void bindTopic(std::istringstream& iss) {
         std::string name;
         std::string topic;
@@ -233,22 +249,29 @@ private:
         }
     }
 
-    // send <发布者> <内容>
+    // send <发布者> <话题> <内容>
     void send(std::istringstream& iss) {
         std::string name;
-        iss >> name;
-        if (name.empty()) {
-            std::cout << "用法: send <发布者名字> <内容>\n";
+        std::string topic;
+        iss >> name >> topic;
+        if (name.empty() || topic.empty()) {
+            std::cout << "用法: send <发布者名字> <话题> <内容>\n";
             return;
         }
 
-        auto it = active_publishers_.find(name);
-        if (it == active_publishers_.end()) {
+        auto nodeIt = active_publishers_.find(name);
+        if (nodeIt == active_publishers_.end()) {
             if (pending_publishers_.count(name) != 0) {
-                std::cout << "发布者 " << name << " 还没有话题，不能发布\n";
+                std::cout << "发布者 " << name << " 还没有绑定话题，不能发布\n";
             } else {
                 std::cout << "没有这个发布者: " << name << "\n";
             }
+            return;
+        }
+
+        auto topicIt = nodeIt->second.find(topic);
+        if (topicIt == nodeIt->second.end()) {
+            std::cout << "发布者 " << name << " 没有绑定话题 " << topic << "\n";
             return;
         }
 
@@ -261,16 +284,15 @@ private:
             content += word;
         }
         if (content.empty()) {
-            std::cout << "用法: send <发布者名字> <内容>\n";
+            std::cout << "用法: send <发布者名字> <话题> <内容>\n";
             return;
         }
 
-        const std::string topic = it->second->topic();
         try {
-            it->second->publish(content);
-            auto topicIt = topics_.find(topic);
-            if (topicIt != topics_.end()) {
-                ++topicIt->second.message_count;
+            topicIt->second->publish(content);
+            auto infoIt = topics_.find(topic);
+            if (infoIt != topics_.end()) {
+                ++infoIt->second.message_count;
             }
             std::cout << "已发送到 " << topic << "，"
                       << ros_sim::ROS::instance().subscriberCount(topic) << " 个订阅者收到\n";
@@ -332,7 +354,7 @@ private:
     void removePublisher(const std::string& name) {
         if (pending_publishers_.count(name) != 0) {
             pending_publishers_.erase(name);
-            std::cout << "已删除发布者 " << name << "（它还没有话题）\n";
+            std::cout << "已删除发布者 " << name << "（它还没有绑定话题）\n";
             narrative("[Node:" + name + "] 发布者已删除");
             return;
         }
@@ -343,24 +365,31 @@ private:
             return;
         }
 
-        const std::string topic = it->second->topic();
-        try {
-            it->second->shutdown();
-            ros_sim::ROS::instance().unregisterPublisher(it->second);
-            active_publishers_.erase(it);
-
-            auto topicIt = topics_.find(topic);
-            if (topicIt != topics_.end()) {
-                auto& list = topicIt->second.publishers;
-                list.erase(std::remove(list.begin(), list.end(), name), list.end());
-                topicIt->second.removed_publishers.insert(name);
+        std::vector<std::string> topics;
+        for (auto& binding : it->second) {
+            const std::string& topic = binding.first;
+            topics.push_back(topic);
+            try {
+                binding.second->shutdown();
+                ros_sim::ROS::instance().unregisterPublisher(binding.second);
+            } catch (const std::exception&) {
             }
-            std::cout << "已删除发布者 " << name << "（话题 " << topic
-                      << " 保留，它发过的消息仍在订阅者手里）\n";
-            narrative("[Node:" + name + "] 发布者已删除，话题 " + topic + " 保留");
-        } catch (const std::exception& e) {
-            std::cout << "删除失败: " << e.what() << "\n";
+
+            auto infoIt = topics_.find(topic);
+            if (infoIt != topics_.end()) {
+                auto& list = infoIt->second.publishers;
+                list.erase(std::remove(list.begin(), list.end(), name), list.end());
+                infoIt->second.removed_publishers.insert(name);
+            }
         }
+        active_publishers_.erase(it);
+
+        std::cout << "已删除发布者 " << name << "（话题 ";
+        for (std::size_t i = 0; i < topics.size(); ++i) {
+            std::cout << (i == 0 ? "" : "、") << topics[i];
+        }
+        std::cout << " 保留，它发过的消息仍在订阅者手里）\n";
+        narrative("[Node:" + name + "] 发布者已删除，话题保留");
     }
 
     void removeSubscriber(const std::string& name) {
@@ -392,7 +421,11 @@ private:
     void removeTopic(const std::string& topic) {
         auto it = topics_.find(topic);
         if (it == topics_.end()) {
-            std::cout << "没有这个话题: " << topic << "\n";
+            if (deleted_topics_.count(topic) != 0) {
+                std::cout << "话题 " << topic << " 已被删除\n";
+            } else {
+                std::cout << "没有这个话题: " << topic << "\n";
+            }
             return;
         }
         if (!it->second.publishers.empty() ||
@@ -409,11 +442,13 @@ private:
 
     // clear：一键删除所有发布者、订阅者和话题
     void clearAll() {
-        for (auto& entry : active_publishers_) {
-            try {
-                entry.second->shutdown();
-                ros_sim::ROS::instance().unregisterPublisher(entry.second);
-            } catch (const std::exception&) {
+        for (auto& node : active_publishers_) {
+            for (auto& binding : node.second) {
+                try {
+                    binding.second->shutdown();
+                    ros_sim::ROS::instance().unregisterPublisher(binding.second);
+                } catch (const std::exception&) {
+                }
             }
         }
         for (auto& entry : subscribers_) {
@@ -485,13 +520,19 @@ private:
             std::cout << "\n";
         }
 
-        std::cout << "发布者: " << (pending_publishers_.size() + active_publishers_.size())
-                  << " 个\n";
+        std::size_t publisherCount = pending_publishers_.size() + active_publishers_.size();
+        std::cout << "发布者: " << publisherCount << " 个\n";
         for (const auto& name : pending_publishers_) {
-            std::cout << "  " << name << " -> (还没有话题)\n";
+            std::cout << "  " << name << " -> (还没有绑定话题)\n";
         }
-        for (const auto& entry : active_publishers_) {
-            std::cout << "  " << entry.first << " -> " << entry.second->topic() << "\n";
+        for (const auto& node : active_publishers_) {
+            std::cout << "  " << node.first << " -> ";
+            bool first = true;
+            for (const auto& binding : node.second) {
+                std::cout << (first ? "" : "、") << binding.first;
+                first = false;
+            }
+            std::cout << "\n";
         }
 
         std::cout << "订阅者: " << (pending_subscribers_.size() + subscribers_.size())
@@ -536,7 +577,8 @@ private:
 
             const std::string& tag = fields[0];
             if (tag == "TOPIC" && fields.size() >= 4) {
-                topicRecords.emplace_back(fields[1], fields[2], static_cast<std::size_t>(std::stoul(fields[3])));
+                topicRecords.emplace_back(fields[1], fields[2],
+                                          static_cast<std::size_t>(std::stoul(fields[3])));
             } else if (tag == "REMOVED" && fields.size() >= 3) {
                 removedRecords.emplace_back(fields[1], fields[2]);
             } else if (tag == "PUB" && fields.size() >= 3) {
@@ -568,9 +610,10 @@ private:
         }
         for (const auto& record : pubRecords) {
             try {
-                auto publisher = std::make_shared<ros_sim::Publisher>(record.first, record.second);
+                auto publisher = std::make_shared<ros_sim::Publisher>(
+                    internalName(record.first, record.second), record.second);
                 publisher->init();
-                active_publishers_[record.first] = publisher;
+                active_publishers_[record.first][record.second] = publisher;
                 topics_[record.second].publishers.push_back(record.first);
             } catch (const std::exception&) {
                 // 状态文件里的脏数据直接跳过，不影响启动
@@ -599,8 +642,8 @@ private:
         }
 
         std::cout << "已恢复上次状态：话题 " << topics_.size() << " 个，发布者 "
-                  << active_publishers_.size() << " 个，订阅者 " << subscribers_.size()
-                  << " 个\n";
+                  << pending_publishers_.size() + active_publishers_.size() << " 个，订阅者 "
+                  << pending_subscribers_.size() + subscribers_.size() << " 个\n";
     }
 
     void saveState() const {
@@ -619,8 +662,10 @@ private:
         for (const auto& name : pending_publishers_) {
             out << "PUBPEND\t" << name << '\n';
         }
-        for (const auto& entry : active_publishers_) {
-            out << "PUB\t" << entry.first << '\t' << entry.second->topic() << '\n';
+        for (const auto& node : active_publishers_) {
+            for (const auto& binding : node.second) {
+                out << "PUB\t" << node.first << '\t' << binding.first << '\n';
+            }
         }
         for (const auto& name : pending_subscribers_) {
             out << "SUBPEND\t" << name << '\n';
@@ -640,26 +685,26 @@ private:
 
     void printHelp() const {
         std::cout << "可用命令:\n"
-                  << "  pub     <名字>            创建发布者（此时还没有话题）\n"
-                  << "  sub     <名字>            创建订阅者（此时还没有订阅话题）\n"
-                  << "  topic   <发布者> <话题>   让该发布者创建话题\n"
-                  << "  join    <发布者> <话题>   让该发布者加入已存在的话题\n"
-                  << "  listen  <订阅者> <话题>   让该订阅者订阅已存在的话题\n"
-                  << "  send    <发布者> <内容>   用该发布者发消息\n"
-                  << "  recv    <订阅者>          查看该订阅者收到的消息\n"
-                  << "  del     pub|sub|topic <名字>  删除发布者 / 订阅者 / 话题\n"
-                  << "  info    <话题>            查看话题详情（含已注销发布者）\n"
-                  << "  clear                     一键清空所有话题、发布者和订阅者\n"
-                  << "  list                      查看话题与节点\n"
-                  << "  help                      显示帮助\n"
-                  << "  exit                      关闭所有节点并退出\n";
+                  << "  pub     <名字>                    创建发布者（尚未绑定话题）\n"
+                  << "  sub     <名字>                    创建订阅者（尚未订阅话题）\n"
+                  << "  topic   <发布者> <话题>           创建新话题并绑定\n"
+                  << "  join    <发布者> <话题>           绑定到已存在的话题\n"
+                  << "  listen  <订阅者> <话题>           订阅已存在的话题\n"
+                  << "  send    <发布者> <话题> <内容>    向指定话题发消息\n"
+                  << "  recv    <订阅者>                  查看该订阅者收到的消息\n"
+                  << "  del     pub|sub|topic <名字>      删除发布者 / 订阅者 / 话题\n"
+                  << "  info    <话题>                    查看话题详情（含已注销发布者）\n"
+                  << "  clear                             一键清空所有话题、发布者和订阅者\n"
+                  << "  list                              查看话题与节点\n"
+                  << "  help                              显示帮助\n"
+                  << "  exit                              保存并退出\n";
     }
 
     static void narrative(const std::string& text) {
         ros_sim::Logger::instance().info(text);
     }
 
-    std::unordered_map<std::string, std::shared_ptr<ros_sim::Publisher>> active_publishers_;
+    std::map<std::string, PublisherMap> active_publishers_;   // 节点名 -> 话题 -> 发布者
     std::unordered_map<std::string, std::shared_ptr<ros_sim::Subscriber>> subscribers_;
     std::set<std::string> pending_publishers_;
     std::set<std::string> pending_subscribers_;
