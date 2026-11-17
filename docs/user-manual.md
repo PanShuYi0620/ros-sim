@@ -248,8 +248,8 @@ constexpr const char* Green = "\033[32m";
 constexpr const char* Cyan = "\033[36m";
 constexpr const char* Yellow = "\033[33m";
 constexpr const char* Red = "\033[31m";
-constexpr const char* Background = "\033[48;5;17m";
-constexpr const char* BrightWhite = "\033[97m";
+constexpr const char* Background = "\033[48;5;235m";
+constexpr const char* BrightWhite = "\033[38;5;252m";
 }  // namespace color
 ```
 
@@ -259,8 +259,8 @@ constexpr const char* BrightWhite = "\033[97m";
 
 | 想改的东西 | 改这一行 | 现在的值 | 现在的效果 |
 | --- | --- | --- | --- |
-| 背景色 | `Background` | `"\033[48;5;17m"` | 深蓝色 |
-| 普通文字 | `BrightWhite` | `"\033[97m"` | 亮白色 |
+| 背景色 | `Background` | `"\033[48;5;235m"` | 炭灰色 |
+| 普通文字 | `BrightWhite` | `"\033[38;5;252m"` | 浅灰色 |
 | 提示符和标题 | `Cyan` | `"\033[36m"` | 青色 |
 | 成功提示 | `Green` | `"\033[32m"` | 绿色 |
 | 失败提示 | `Red` | `"\033[31m"` | 红色 |
@@ -272,7 +272,7 @@ constexpr const char* BrightWhite = "\033[97m";
 **背景色**的格式是 `"\033[48;5;数字m"`，只改最后的数字：
 
 ```cpp
-constexpr const char* Background = "\033[48;5;17m";
+constexpr const char* Background = "\033[48;5;235m";
 //                                        ↑
 //                                    改这个数字
 ```
@@ -281,8 +281,8 @@ constexpr const char* Background = "\033[48;5;17m";
 
 | 数字 | 颜色 | 数字 | 颜色 |
 | --- | --- | --- | --- |
-| 17 | 深蓝（默认） | 234 | 近黑 |
-| 235 | 炭灰 | 236 | 深灰 |
+| 235 | 炭灰（默认） | 234 | 近黑 |
+| 17 | 深蓝 | 236 | 深灰 |
 | 22 | 深绿 | 52 | 深红棕 |
 | 53 | 深紫 | 233 | 深灰偏黑 |
 
@@ -314,7 +314,7 @@ constexpr const char* Green = "\033[34m";
 **Q：改了颜色，运行后没变化？**
 A：多半是没重新编译。改完代码必须 Build 一次。
 
-**Q：屏幕上出现 `[48;5;17m` 这种奇怪的字符？**
+**Q：屏幕上出现 `[48;5;235m` 这种奇怪的字符？**
 A：你的终端不支持 ANSI 颜色。换用 Windows Terminal，或者在 CLion 里运行。程序已经调用 `SetConsoleMode` 开启颜色支持，Windows 10 及以上一般没问题。
 
 **Q：背景色只出现在文字后面，周围还是黑的？**
