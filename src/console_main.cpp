@@ -78,6 +78,7 @@ private:
         if (command == "recv") { recv(iss); return true; }
         if (command == "del") { removeNode(iss); return true; }
         if (command == "info") { showTopic(iss); return true; }
+        if (command == "clear") { clearAll(); return true; }
 
         std::cout << "未知命令: " << command << "，输入 help 查看帮助\n";
         return true;
@@ -406,6 +407,34 @@ private:
         narrative("[Topic:" + topic + "] 话题已删除");
     }
 
+    // clear：一键删除所有发布者、订阅者和话题
+    void clearAll() {
+        for (auto& entry : active_publishers_) {
+            try {
+                entry.second->shutdown();
+                ros_sim::ROS::instance().unregisterPublisher(entry.second);
+            } catch (const std::exception&) {
+            }
+        }
+        for (auto& entry : subscribers_) {
+            try {
+                entry.second->shutdown();
+                ros_sim::ROS::instance().unregisterSubscriber(entry.second);
+            } catch (const std::exception&) {
+            }
+        }
+
+        active_publishers_.clear();
+        subscribers_.clear();
+        pending_publishers_.clear();
+        pending_subscribers_.clear();
+        topics_.clear();
+        deleted_topics_.clear();
+
+        std::cout << "已清空所有话题、发布者和订阅者\n";
+        narrative("[System] 已清空全部节点与话题");
+    }
+
     void showTopic(std::istringstream& iss) {
         std::string topic;
         if (!(iss >> topic)) {
@@ -620,6 +649,7 @@ private:
                   << "  recv    <订阅者>          查看该订阅者收到的消息\n"
                   << "  del     pub|sub|topic <名字>  删除发布者 / 订阅者 / 话题\n"
                   << "  info    <话题>            查看话题详情（含已注销发布者）\n"
+                  << "  clear                     一键清空所有话题、发布者和订阅者\n"
                   << "  list                      查看话题与节点\n"
                   << "  help                      显示帮助\n"
                   << "  exit                      关闭所有节点并退出\n";
