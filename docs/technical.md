@@ -13,12 +13,13 @@
 
 本项目用 C++17 标准库实现了一个简易的 ROS 通信内核，包含节点抽象、发布者、订阅者、消息封装、单例通信核心、异常体系与日志系统。程序不依赖任何第三方库，一条 `cmake` 命令即可构建。
 
-最终交付两个可执行程序：
+最终交付三个可执行程序：
 
 | 程序 | 作用 |
 | --- | --- |
 | `ros_sim` | 演示程序：多话题、多订阅者的完整生命周期 |
 | `ros_tests` | 测试程序：14 个用例，覆盖正常、边界、异常三类场景 |
+| `ros_console` | 交互式控制台：运行时创建 / 删除节点、发消息、状态持久化 |
 
 ---
 
@@ -293,7 +294,7 @@ file_.open("logs/ros_sim.log", std::ios::app);
 #endif
 ```
 
-`ros_sim` 和 `ros_tests` 两个程序都加了一次。
+`ros_sim`、`ros_tests`、`ros_console` 三个程序都加了一次。
 
 ---
 
@@ -325,7 +326,7 @@ Failed to load executable due to non-ASCII characters in the path
 
 **原因**：程序输出 UTF-8 字节，控制台按 GBK 解释。
 
-**解决**：在 `main()` 开头调用 `SetConsoleOutputCP(CP_UTF8)`。两个可执行程序都要加，漏掉一个，那个程序就还是乱码。
+**解决**：在 `main()` 开头调用 `SetConsoleOutputCP(CP_UTF8)`。三个可执行程序都要加，漏掉一个，那个程序就还是乱码。
 
 ### 5.3 节点名重复导致程序崩溃
 
