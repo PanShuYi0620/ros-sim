@@ -1,5 +1,6 @@
 #include "ros/ros.hpp"
 
+#include <algorithm>
 #include <exception>
 
 #include "ros/exception.hpp"
@@ -38,6 +39,46 @@ void ROS::registerSubscriber(const std::shared_ptr<Subscriber>& subscriber) {
     nodeNames_.insert(subscriber->name());
     Logger::instance().info("[Node:" + subscriber->name() +
                             "] 已注册为订阅者 topic=" + subscriber->topic());
+}
+
+void ROS::unregisterPublisher(const std::shared_ptr<Publisher>& publisher) {
+    if (!publisher) {
+        throw NodeException("<null>", "不能注销空指针发布者");
+    }
+    if (nodeNames_.count(publisher->name()) == 0) {
+        throw NodeException(publisher->name(), "节点未注册，无法注销");
+    }
+
+    auto topicIt = publishers_.find(publisher->topic());
+    if (topicIt != publishers_.end()) {
+        auto& list = topicIt->second;
+        list.erase(std::remove(list.begin(), list.end(), publisher), list.end());
+        if (list.empty()) {
+            publishers_.erase(topicIt);
+        }
+    }
+    nodeNames_.erase(publisher->name());
+    Logger::instance().info("[Node:" + publisher->name() + "] 已注销发布者");
+}
+
+void ROS::unregisterSubscriber(const std::shared_ptr<Subscriber>& subscriber) {
+    if (!subscriber) {
+        throw NodeException("<null>", "不能注销空指针订阅者");
+    }
+    if (nodeNames_.count(subscriber->name()) == 0) {
+        throw NodeException(subscriber->name(), "节点未注册，无法注销");
+    }
+
+    auto topicIt = subscribers_.find(subscriber->topic());
+    if (topicIt != subscribers_.end()) {
+        auto& list = topicIt->second;
+        list.erase(std::remove(list.begin(), list.end(), subscriber), list.end());
+        if (list.empty()) {
+            subscribers_.erase(topicIt);
+        }
+    }
+    nodeNames_.erase(subscriber->name());
+    Logger::instance().info("[Node:" + subscriber->name() + "] 已注销订阅者");
 }
 
 void ROS::publish(const std::string& topic, const Message& message) {

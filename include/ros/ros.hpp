@@ -26,6 +26,9 @@ public:
     void registerPublisher(const std::shared_ptr<Publisher>& publisher);
     void registerSubscriber(const std::shared_ptr<Subscriber>& subscriber);
 
+    void unregisterPublisher(const std::shared_ptr<Publisher>& publisher);
+    void unregisterSubscriber(const std::shared_ptr<Subscriber>& subscriber);
+
     void publish(const std::string& topic, const Message& message);
 
     bool hasSubscriber(const std::string& topic) const;
