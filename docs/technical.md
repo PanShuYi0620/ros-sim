@@ -161,7 +161,7 @@ for (const auto& subscriber : it->second) {
 
 单例，提供 Info / Warn / Error 三级接口，同时输出到控制台和 `logs/ros_sim.log`。
 
-时间戳格式在 `nowTimestamp()` 里生成：
+时间戳格式由 `src/util.cpp` 里的 `nowTimestamp()` 统一生成，Logger 和 Message 共用同一份实现：
 
 ```cpp
 std::time_t now = std::time(nullptr);

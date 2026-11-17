@@ -387,7 +387,6 @@ private:
     ~Logger() = default;
 
     static const char* levelName(LogLevel level);
-    static std::string nowTimestamp();
 
     std::ofstream file_;
 };
@@ -412,9 +411,6 @@ public:
     const std::string& timestamp() const noexcept { return timestamp_; }
 
     virtual std::string toString() const;
-
-protected:
-    static std::string makeTimestamp();
 
 private:
     std::string content_;
@@ -594,6 +590,27 @@ private:
 
 ---
 
+### 6.9 `util.hpp`
+
+```cpp
+#pragma once
+#include <string>
+
+namespace ros_sim {
+
+// 生成 "YYYY-MM-DD HH:MM:SS" 格式的当前时间
+std::string nowTimestamp();
+
+// 校验话题名：空或全空白抛 TopicException
+std::string validateTopicName(std::string topic);
+
+}  // namespace ros_sim
+```
+
+> Logger 与 Message 共用 `nowTimestamp()`，Publisher 与 Subscriber 共用 `validateTopicName()`，避免重复实现。
+
+---
+
 ## 7. 目录结构与构建
 
 ```
@@ -607,6 +624,7 @@ ros-sim/
 │   ├── node.hpp
 │   ├── publisher.hpp
 │   ├── subscriber.hpp
+│   ├── util.hpp
 │   └── ros.hpp
 ├── src/
 │   ├── logger.cpp
@@ -615,6 +633,7 @@ ros-sim/
 │   ├── node.cpp
 │   ├── publisher.cpp
 │   ├── subscriber.cpp
+│   ├── util.cpp
 │   ├── ros.cpp
 │   ├── console_main.cpp
 │   └── main.cpp
