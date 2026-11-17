@@ -1,8 +1,10 @@
 #include <iostream>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -16,7 +18,10 @@
 
 namespace {
 
-// 交互式控制台：运行时创建节点、发布消息、查看订阅者收到的内容
+// 交互式控制台：
+// 发布者负责创建话题，其他发布者可以加入已有话题；
+// 订阅者只能订阅已经存在的话题；
+// 日志以“旁白”的方式记录每一步发生了什么。
 class Console {
 public:
     void run() {
@@ -41,6 +46,11 @@ public:
     }
 
 private:
+    struct TopicInfo {
+        std::string creator;
+        std::vector<std::string> publishers;
+    };
+
     bool handle(const std::string& line) {
         std::istringstream iss(line);
         std::string command;
@@ -70,7 +80,15 @@ private:
             auto publisher = std::make_shared<ros_sim::Publisher>(name, topic);
             publisher->init();
             publishers_[name] = publisher;
-            std::cout << "发布者 " << name << " 已创建，话题 " << topic << "\n";
+
+            auto it = topics_.find(topic);
+            if (it == topics_.end()) {
+                topics_[topic] = TopicInfo{name, {name}};
+                narrative("[Topic:" + topic + "] 话题已创建，创建者: " + name);
+            } else {
+                it->second.publishers.push_back(name);
+                narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了已有话题");
+            }
         } catch (const std::exception& e) {
             std::cout << "创建失败: " << e.what() << "\n";
         }
@@ -84,11 +102,16 @@ private:
             return;
         }
 
+        if (topics_.find(topic) == topics_.end()) {
+            std::cout << "话题 " << topic << " 还不存在，请先创建发布者\n";
+            return;
+        }
+
         try {
             auto subscriber = std::make_shared<ros_sim::Subscriber>(name, topic);
             subscriber->init();
             subscribers_[name] = subscriber;
-            std::cout << "订阅者 " << name << " 已创建，话题 " << topic << "\n";
+            narrative("[Topic:" + topic + "] 订阅者 " + name + " 订阅了话题");
         } catch (const std::exception& e) {
             std::cout << "创建失败: " << e.what() << "\n";
         }
@@ -121,8 +144,12 @@ private:
             return;
         }
 
+        const std::string topic = it->second->topic();
         try {
             it->second->publish(content);
+            narrative("[Topic:" + topic + "] " + name + " 发布完成，共 " +
+                      std::to_string(ros_sim::ROS::instance().subscriberCount(topic)) +
+                      " 个订阅者收到");
         } catch (const std::exception& e) {
             std::cout << "发布失败: " << e.what() << "\n";
         }
@@ -151,9 +178,14 @@ private:
     }
 
     void list() const {
-        std::cout << "发布者: " << publishers_.size() << " 个\n";
-        for (const auto& entry : publishers_) {
-            std::cout << "  " << entry.first << " -> " << entry.second->topic() << "\n";
+        std::cout << "话题: " << topics_.size() << " 个\n";
+        for (const auto& entry : topics_) {
+            const std::string& topic = entry.first;
+            const TopicInfo& info = entry.second;
+            std::cout << "  " << topic << "  创建者: " << info.creator
+                      << "  发布者: " << info.publishers.size()
+                      << "  订阅者: " << ros_sim::ROS::instance().subscriberCount(topic)
+                      << "\n";
         }
 
         std::cout << "订阅者: " << subscribers_.size() << " 个\n";
@@ -165,17 +197,22 @@ private:
 
     void printHelp() const {
         std::cout << "可用命令:\n"
-                  << "  pub  <名字> <话题>      创建发布者\n"
-                  << "  sub  <名字> <话题>      创建订阅者\n"
+                  << "  pub  <名字> <话题>      创建发布者（话题不存在则创建，存在则加入）\n"
+                  << "  sub  <名字> <话题>      订阅已存在的话题\n"
                   << "  send <发布者> <内容>    用指定发布者发消息\n"
                   << "  recv <订阅者>           查看该订阅者收到的消息\n"
-                  << "  list                    查看当前所有节点\n"
+                  << "  list                    查看话题与节点\n"
                   << "  help                    显示帮助\n"
                   << "  exit                    关闭所有节点并退出\n";
     }
 
+    static void narrative(const std::string& text) {
+        ros_sim::Logger::instance().info(text);
+    }
+
     std::unordered_map<std::string, std::shared_ptr<ros_sim::Publisher>> publishers_;
     std::unordered_map<std::string, std::shared_ptr<ros_sim::Subscriber>> subscribers_;
+    std::map<std::string, TopicInfo> topics_;
 };
 
 }  // namespace
