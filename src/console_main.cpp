@@ -1,6 +1,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -19,9 +20,10 @@
 namespace {
 
 // 交互式控制台：
-// 发布者负责创建话题，其他发布者可以加入已有话题；
-// 订阅者只能订阅已经存在的话题；
-// 日志以“旁白”的方式记录每一步发生了什么。
+// 1. 先创建发布者（此时还没有话题）
+// 2. 让某个发布者创建话题，或加入已存在的话题
+// 3. 订阅者只能订阅已经创建的话题
+// 4. 日志以旁白方式记录每一步
 class Console {
 public:
     void run() {
@@ -60,6 +62,8 @@ private:
         if (command == "exit" || command == "quit") { return false; }
         if (command == "list") { list(); return true; }
         if (command == "pub") { createPublisher(iss); return true; }
+        if (command == "topic") { assignTopic(iss); return true; }
+        if (command == "join") { joinTopic(iss); return true; }
         if (command == "sub") { createSubscriber(iss); return true; }
         if (command == "send") { send(iss); return true; }
         if (command == "recv") { recv(iss); return true; }
@@ -68,32 +72,90 @@ private:
         return true;
     }
 
+    bool nameTaken(const std::string& name) const {
+        return pending_publishers_.count(name) != 0 || active_publishers_.count(name) != 0 ||
+               subscribers_.count(name) != 0;
+    }
+
+    // pub <名字>：只创建发布者，不分配话题
     void createPublisher(std::istringstream& iss) {
+        std::string name;
+        if (!(iss >> name)) {
+            std::cout << "用法: pub <名字>\n";
+            return;
+        }
+        if (nameTaken(name)) {
+            std::cout << "名字 " << name << " 已被占用\n";
+            return;
+        }
+
+        pending_publishers_.insert(name);
+        narrative("[Node:" + name + "] 发布者已创建（尚未分配话题）");
+    }
+
+    // topic <发布者> <话题>：由该发布者创建话题
+    void assignTopic(std::istringstream& iss) {
         std::string name;
         std::string topic;
         if (!(iss >> name >> topic)) {
-            std::cout << "用法: pub <名字> <话题>\n";
+            std::cout << "用法: topic <发布者> <话题>\n";
+            return;
+        }
+        if (pending_publishers_.count(name) == 0) {
+            if (active_publishers_.count(name) != 0) {
+                std::cout << "发布者 " << name << " 已经有话题了\n";
+            } else {
+                std::cout << "没有这个发布者: " << name << "\n";
+            }
+            return;
+        }
+        if (topics_.count(topic) != 0) {
+            std::cout << "话题 " << topic << " 已存在，请用 join 加入\n";
             return;
         }
 
         try {
             auto publisher = std::make_shared<ros_sim::Publisher>(name, topic);
             publisher->init();
-            publishers_[name] = publisher;
-
-            auto it = topics_.find(topic);
-            if (it == topics_.end()) {
-                topics_[topic] = TopicInfo{name, {name}};
-                narrative("[Topic:" + topic + "] 话题已创建，创建者: " + name);
-            } else {
-                it->second.publishers.push_back(name);
-                narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了已有话题");
-            }
+            active_publishers_[name] = publisher;
+            pending_publishers_.erase(name);
+            topics_[topic] = TopicInfo{name, {name}};
+            narrative("[Topic:" + topic + "] 话题由 " + name + " 创建");
         } catch (const std::exception& e) {
-            std::cout << "创建失败: " << e.what() << "\n";
+            std::cout << "创建话题失败: " << e.what() << "\n";
         }
     }
 
+    // join <发布者> <话题>：让已有发布者加入已存在的话题
+    void joinTopic(std::istringstream& iss) {
+        std::string name;
+        std::string topic;
+        if (!(iss >> name >> topic)) {
+            std::cout << "用法: join <发布者> <话题>\n";
+            return;
+        }
+        if (pending_publishers_.count(name) == 0) {
+            std::cout << "没有可用的发布者: " << name << "\n";
+            return;
+        }
+        if (topics_.count(topic) == 0) {
+            std::cout << "话题 " << topic << " 不存在\n";
+            return;
+        }
+
+        try {
+            auto publisher = std::make_shared<ros_sim::Publisher>(name, topic);
+            publisher->init();
+            active_publishers_[name] = publisher;
+            pending_publishers_.erase(name);
+            topics_[topic].publishers.push_back(name);
+            narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
+        } catch (const std::exception& e) {
+            std::cout << "加入话题失败: " << e.what() << "\n";
+        }
+    }
+
+    // sub <名字> <话题>：话题必须已存在
     void createSubscriber(std::istringstream& iss) {
         std::string name;
         std::string topic;
@@ -101,9 +163,12 @@ private:
             std::cout << "用法: sub <名字> <话题>\n";
             return;
         }
-
-        if (topics_.find(topic) == topics_.end()) {
-            std::cout << "话题 " << topic << " 还不存在，请先创建发布者\n";
+        if (topics_.count(topic) == 0) {
+            std::cout << "话题 " << topic << " 还没有创建，不能订阅\n";
+            return;
+        }
+        if (nameTaken(name)) {
+            std::cout << "名字 " << name << " 已被占用\n";
             return;
         }
 
@@ -113,10 +178,11 @@ private:
             subscribers_[name] = subscriber;
             narrative("[Topic:" + topic + "] 订阅者 " + name + " 订阅了话题");
         } catch (const std::exception& e) {
-            std::cout << "创建失败: " << e.what() << "\n";
+            std::cout << "创建订阅者失败: " << e.what() << "\n";
         }
     }
 
+    // send <发布者> <内容>
     void send(std::istringstream& iss) {
         std::string name;
         iss >> name;
@@ -125,9 +191,13 @@ private:
             return;
         }
 
-        auto it = publishers_.find(name);
-        if (it == publishers_.end()) {
-            std::cout << "没有这个发布者: " << name << "\n";
+        auto it = active_publishers_.find(name);
+        if (it == active_publishers_.end()) {
+            if (pending_publishers_.count(name) != 0) {
+                std::cout << "发布者 " << name << " 还没有话题，不能发布\n";
+            } else {
+                std::cout << "没有这个发布者: " << name << "\n";
+            }
             return;
         }
 
@@ -180,12 +250,19 @@ private:
     void list() const {
         std::cout << "话题: " << topics_.size() << " 个\n";
         for (const auto& entry : topics_) {
-            const std::string& topic = entry.first;
-            const TopicInfo& info = entry.second;
-            std::cout << "  " << topic << "  创建者: " << info.creator
-                      << "  发布者: " << info.publishers.size()
-                      << "  订阅者: " << ros_sim::ROS::instance().subscriberCount(topic)
+            std::cout << "  " << entry.first << "  创建者: " << entry.second.creator
+                      << "  发布者: " << entry.second.publishers.size()
+                      << "  订阅者: " << ros_sim::ROS::instance().subscriberCount(entry.first)
                       << "\n";
+        }
+
+        std::cout << "发布者: " << (pending_publishers_.size() + active_publishers_.size())
+                  << " 个\n";
+        for (const auto& name : pending_publishers_) {
+            std::cout << "  " << name << " -> (还没有话题)\n";
+        }
+        for (const auto& entry : active_publishers_) {
+            std::cout << "  " << entry.first << " -> " << entry.second->topic() << "\n";
         }
 
         std::cout << "订阅者: " << subscribers_.size() << " 个\n";
@@ -197,10 +274,12 @@ private:
 
     void printHelp() const {
         std::cout << "可用命令:\n"
-                  << "  pub  <名字> <话题>      创建发布者（话题不存在则创建，存在则加入）\n"
-                  << "  sub  <名字> <话题>      订阅已存在的话题\n"
-                  << "  send <发布者> <内容>    用指定发布者发消息\n"
-                  << "  recv <订阅者>           查看该订阅者收到的消息\n"
+                  << "  pub   <名字>            创建发布者（此时还没有话题）\n"
+                  << "  topic <发布者> <话题>   让该发布者创建话题\n"
+                  << "  join  <发布者> <话题>   让该发布者加入已存在的话题\n"
+                  << "  sub   <名字> <话题>     创建订阅者（话题必须已存在）\n"
+                  << "  send  <发布者> <内容>   用该发布者发消息\n"
+                  << "  recv  <订阅者>          查看该订阅者收到的消息\n"
                   << "  list                    查看话题与节点\n"
                   << "  help                    显示帮助\n"
                   << "  exit                    关闭所有节点并退出\n";
@@ -210,8 +289,9 @@ private:
         ros_sim::Logger::instance().info(text);
     }
 
-    std::unordered_map<std::string, std::shared_ptr<ros_sim::Publisher>> publishers_;
+    std::unordered_map<std::string, std::shared_ptr<ros_sim::Publisher>> active_publishers_;
     std::unordered_map<std::string, std::shared_ptr<ros_sim::Subscriber>> subscribers_;
+    std::set<std::string> pending_publishers_;
     std::map<std::string, TopicInfo> topics_;
 };
 
