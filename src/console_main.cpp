@@ -31,9 +31,9 @@ constexpr const char* Green = "\033[32m";
 constexpr const char* Cyan = "\033[36m";
 constexpr const char* Yellow = "\033[33m";
 constexpr const char* Red = "\033[31m";
-// 背景：炭灰色；要换颜色改这里（256 色：\033[48;5;N m，N 取 235 炭灰 / 236 深灰 / 234 近黑）
-constexpr const char* Background = "\033[48;5;235m";
-constexpr const char* BrightWhite = "\033[38;5;252m";
+// 背景：中蓝色；要换颜色改这里（256 色：\033[48;5;N m，N 取 25 中蓝 / 17 深蓝 / 235 炭灰）
+constexpr const char* Background = "\033[48;5;25m";
+constexpr const char* BrightWhite = "\033[38;5;255m";
 }  // namespace color
 
 void printOk(const std::string& text) {
