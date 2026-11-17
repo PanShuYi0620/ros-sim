@@ -42,12 +42,13 @@ public:
             if (line.empty()) {
                 continue;
             }
-            if (!handle(line)) {
+            const bool keepGoing = handle(line);
+            saveState();   // 每条命令后都保存，直接关窗口也不会丢
+            if (!keepGoing) {
                 break;
             }
         }
 
-        saveState();
         ros_sim::ROS::instance().shutdownAll();
         std::cout << "已退出（状态已保存，下次启动会恢复）\n";
     }
