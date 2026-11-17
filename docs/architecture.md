@@ -73,6 +73,7 @@
 | ROS | 注册表维护、查重、转发、统一关闭 | 解释消息内容 |
 | Logger | 分级日志、控制台与文件双输出 | 业务逻辑 |
 | 异常体系 | 分类表达错误、携带上下文 | 错误恢复 |
+| ros_console | 命令解析、运行时增删节点、状态持久化 | 通信逻辑本身 |
 
 ---
 
@@ -615,6 +616,7 @@ ros-sim/
 │   ├── publisher.cpp
 │   ├── subscriber.cpp
 │   ├── ros.cpp
+│   ├── console_main.cpp
 │   └── main.cpp
 ├── tests/
 │   └── test_main.cpp
@@ -629,7 +631,7 @@ cmake -S . -B build
 cmake --build build
 ```
 
-产物：`ros_sim`（演示）与 `ros_tests`（测试）。
+产物：`ros_sim`（演示）、`ros_tests`（测试）、`ros_console`（交互式控制台）。
 
 ---
 
@@ -685,3 +687,6 @@ cmake --build build
 | 10 | feat: 添加全局异常捕获与自定义传感器消息 | ✅ |
 | 11 | test: 补充结构化测试用例 | ✅ |
 | 12 | docs: 补全架构设计文档 | ✅ |
+| 13 | feat: 交互式控制台、运行时动态增删、状态持久化、界面配色 | ✅ |
+
+> 后续的界面调整与文档更新也按功能拆分提交，完整记录见 `git log --oneline`。
