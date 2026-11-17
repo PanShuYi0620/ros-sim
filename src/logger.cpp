@@ -1,10 +1,9 @@
 #include "ros/logger.hpp"
-// 引入在include，ros，logger里面写的头文件
-#include <ctime>
+
 #include <filesystem>
-#include <iomanip>
 #include <iostream>
-#include <sstream>
+
+#include "ros/util.hpp"
 
 namespace ros_sim {
 
@@ -27,17 +26,7 @@ const char* Logger::levelName(LogLevel level) {
     return "UNKNOWN";
 }
 
-// 3，生成 "2026-11-15 19:10:00"
-std::string Logger::nowTimestamp() {
-    std::time_t now = std::time(nullptr);
-    std::tm* local = std::localtime(&now);
-
-    std::ostringstream oss;
-    oss << std::put_time(local, "%Y-%m-%d %H:%M:%S");
-    return oss.str();
-}
-// 4，核心：拼一行，打到屏幕，再写进文件
-
+// 3，核心：拼一行，打到屏幕，再写进文件
 void Logger::log(LogLevel level, const std::string& message) {
     const std::string line = "[" + nowTimestamp() + "] [" + levelName(level) + "] " + message;
 

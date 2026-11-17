@@ -5,22 +5,12 @@
 #include "ros/exception.hpp"
 #include "ros/logger.hpp"
 #include "ros/ros.hpp"
+#include "ros/util.hpp"
 
 namespace ros_sim {
 
-namespace {
-
-std::string validateTopic(std::string topic) {
-    if (topic.find_first_not_of(" \t\r\n") == std::string::npos) {
-        throw TopicException("话题名不能为空");
-    }
-    return topic;
-}
-
-} // namespace
-
 Subscriber::Subscriber(std::string name, std::string topic)
-    : Node(std::move(name)), topic_(validateTopic(std::move(topic))) {}
+    : Node(std::move(name)), topic_(validateTopicName(std::move(topic))) {}
 
 void Subscriber::init() {
     if (initialized_) {

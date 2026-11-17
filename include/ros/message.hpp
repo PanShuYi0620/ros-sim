@@ -18,9 +18,6 @@ class Message {
 
     virtual std::string toString() const;
 
-  protected:
-    static std::string makeTimestamp();
-
   private:
     std::string content_;
     std::string timestamp_;

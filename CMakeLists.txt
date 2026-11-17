@@ -22,6 +22,7 @@ add_library(ros_core STATIC
     src/ros.cpp
     src/publisher.cpp
     src/subscriber.cpp
+    src/util.cpp
 )
 target_include_directories(ros_core PUBLIC include)
 

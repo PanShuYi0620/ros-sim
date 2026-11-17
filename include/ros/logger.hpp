@@ -31,7 +31,6 @@ class Logger {
     // 构造函数私有，外面 new 不出来，只能通过 instance() 拿
 
     static const char* levelName(LogLevel level);
-    static std::string nowTimestamp();
     std::ofstream file_;
     bool consoleEnabled_{true};
 };
