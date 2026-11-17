@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "ros/message.hpp"
 #include "ros/node.hpp"
@@ -19,9 +20,13 @@ public:
 
     void receive(const Message& message);
 
+    // 收到的消息（最多保留最近 100 条），供交互式控制台查看
+    const std::vector<std::string>& inbox() const noexcept { return inbox_; }
+
 private:
     std::string topic_;
     bool initialized_{false};
+    std::vector<std::string> inbox_;
 };
 
 }  // namespace ros_sim

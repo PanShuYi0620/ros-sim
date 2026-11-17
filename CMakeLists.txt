@@ -36,3 +36,9 @@ add_executable(ros_tests
     tests/test_main.cpp
 )
 target_link_libraries(ros_tests PRIVATE ros_core)
+
+# 交互式控制台：运行时创建节点、发消息、查看订阅者收到的内容
+add_executable(ros_console
+    src/console_main.cpp
+)
+target_link_libraries(ros_console PRIVATE ros_core)
