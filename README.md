@@ -104,3 +104,4 @@ ros-sim/
 - **防切片**：消息一律以 `const Message&` 传递
 - **异常分层**：`RosException` → `NodeException` / `TopicException` / `MessageException`
 - **状态持久化**：`ros_console` 把状态写入 `console_state.txt`，重启可恢复
+- **公共工具**：时间戳与话题校验抽到 `util.hpp` / `util.cpp`，避免重复实现
