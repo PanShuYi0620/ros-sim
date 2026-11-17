@@ -34,7 +34,7 @@ constexpr const char* Red = "\033[31m";
 // 背景：中蓝色；要换颜色改这里（256 色：\033[48;5;N m，N 取 25 中蓝 / 17 深蓝 / 235 炭灰）
 constexpr const char* Background = "\033[48;5;25m";
 constexpr const char* BrightWhite = "\033[38;5;255m";
-}  // namespace color
+} // namespace color
 
 void printOk(const std::string& text) {
     std::cout << color::Green << "✔ " << color::Reset << text << "\n";
@@ -44,13 +44,17 @@ void printErr(const std::string& text) {
     std::cout << color::Red << "✘ " << color::Reset << text << "\n";
 }
 
+void printUsage(const std::string& text) {
+    std::cout << color::Dim << "用法: " << text << color::Reset << "\n";
+}
+
 // 交互式控制台
 // 发布者：先创建，再绑定一个或多个话题（topic 创建 / join 加入）
 // 订阅者：先创建，再通过 listen 绑定到已存在的话题
 // 发送时必须指明「哪个发布者」+「哪个话题」，避免多话题时歧义
 // 控制台只显示交互内容，系统日志写入 logs/ros_sim.log
 class Console {
-public:
+  public:
     void run() {
         ros_sim::Logger::instance().setConsoleEnabled(false);
         loadState();
@@ -58,8 +62,7 @@ public:
         // 背景 + 亮白前景，并清屏
         std::cout << color::Background << color::BrightWhite << "\033[2J\033[H";
 
-        std::cout << color::Cyan << color::Bold
-                  << "============================================\n"
+        std::cout << color::Cyan << color::Bold << "============================================\n"
                   << "        ros_sim 交互式控制台\n"
                   << "   输入 help 查看命令，exit 保存并退出\n"
                   << "============================================" << color::Reset << "\n";
@@ -67,8 +70,7 @@ public:
 
         std::string line;
         while (true) {
-            std::cout << "\n" << color::Cyan << color::Bold << "> " << color::Reset
-                      << std::flush;
+            std::cout << "\n" << color::Cyan << color::Bold << "> " << color::Reset << std::flush;
             if (!std::getline(std::cin, line)) {
                 break;
             }
@@ -76,19 +78,18 @@ public:
                 continue;
             }
             const bool keepGoing = handle(line);
-            saveState();   // 每条命令后都保存，直接关窗口也不会丢
+            saveState(); // 每条命令后都保存，直接关窗口也不会丢
             if (!keepGoing) {
                 break;
             }
         }
 
         ros_sim::ROS::instance().shutdownAll();
-        std::cout << color::Green << "✔ " << color::Reset
-                  << "已退出（状态已保存，下次启动会恢复）\n";
-        std::cout << "\033[0m";   // 退出前恢复正常配色
+        printOk("已退出（状态已保存，下次启动会恢复）");
+        std::cout << "\033[0m"; // 退出前恢复正常配色
     }
 
-private:
+  private:
     struct TopicInfo {
         std::string creator;
         std::vector<std::string> publishers;
@@ -104,21 +105,59 @@ private:
         std::string command;
         iss >> command;
 
-        if (command == "help") { printHelp(); return true; }
-        if (command == "exit" || command == "quit") { return false; }
-        if (command == "list") { list(); return true; }
-        if (command == "pub") { createPublisher(iss); return true; }
-        if (command == "sub") { createSubscriber(iss); return true; }
-        if (command == "topic") { assignTopic(iss); return true; }
-        if (command == "join") { joinTopic(iss); return true; }
-        if (command == "listen") { bindTopic(iss); return true; }
-        if (command == "send") { send(iss); return true; }
-        if (command == "recv") { recv(iss); return true; }
-        if (command == "del") { removeNode(iss); return true; }
-        if (command == "info") { showTopic(iss); return true; }
-        if (command == "clear") { clearAll(); return true; }
+        if (command == "help") {
+            printHelp();
+            return true;
+        }
+        if (command == "exit" || command == "quit") {
+            return false;
+        }
+        if (command == "list") {
+            list();
+            return true;
+        }
+        if (command == "pub") {
+            createPublisher(iss);
+            return true;
+        }
+        if (command == "sub") {
+            createSubscriber(iss);
+            return true;
+        }
+        if (command == "topic") {
+            assignTopic(iss);
+            return true;
+        }
+        if (command == "join") {
+            joinTopic(iss);
+            return true;
+        }
+        if (command == "listen") {
+            bindTopic(iss);
+            return true;
+        }
+        if (command == "send") {
+            send(iss);
+            return true;
+        }
+        if (command == "recv") {
+            recv(iss);
+            return true;
+        }
+        if (command == "del") {
+            removeNode(iss);
+            return true;
+        }
+        if (command == "info") {
+            showTopic(iss);
+            return true;
+        }
+        if (command == "clear") {
+            clearAll();
+            return true;
+        }
 
-        std::cout << "未知命令: " << command << "，输入 help 查看帮助\n";
+        printErr("未知命令: " + command + "，输入 help 查看帮助");
         return true;
     }
 
@@ -140,11 +179,11 @@ private:
     void createPublisher(std::istringstream& iss) {
         std::string name;
         if (!(iss >> name)) {
-            std::cout << "用法: pub <名字>\n";
+            printUsage("pub <名字>");
             return;
         }
         if (nodeExists(name)) {
-            std::cout << "名字 " << name << " 已被占用\n";
+            printErr("名字 " + name + " 已被占用");
             return;
         }
 
@@ -157,11 +196,11 @@ private:
     void createSubscriber(std::istringstream& iss) {
         std::string name;
         if (!(iss >> name)) {
-            std::cout << "用法: sub <名字>\n";
+            printUsage("sub <名字>");
             return;
         }
         if (nodeExists(name)) {
-            std::cout << "名字 " << name << " 已被占用\n";
+            printErr("名字 " + name + " 已被占用");
             return;
         }
 
@@ -175,19 +214,19 @@ private:
         std::string name;
         std::string topic;
         if (!(iss >> name >> topic)) {
-            std::cout << "用法: topic <发布者> <话题>\n";
+            printUsage("topic <发布者> <话题>");
             return;
         }
         if (!nodeExists(name)) {
-            std::cout << "没有这个发布者: " << name << "\n";
+            printErr("没有这个发布者: " + name);
             return;
         }
         if (topics_.count(topic) != 0) {
-            std::cout << "话题 " << topic << " 已存在，请用 join 加入\n";
+            printErr("话题 " + topic + " 已存在，请用 join 加入");
             return;
         }
         if (publisherBound(name, topic)) {
-            std::cout << "发布者 " << name << " 已经绑定话题 " << topic << "\n";
+            printErr("发布者 " + name + " 已经绑定话题 " + topic);
             return;
         }
 
@@ -204,7 +243,7 @@ private:
             printOk("话题 " + topic + " 已创建，创建者 " + name);
             narrative("[Topic:" + topic + "] 话题由 " + name + " 创建");
         } catch (const std::exception& e) {
-            std::cout << "创建话题失败: " << e.what() << "\n";
+            printErr(std::string("创建话题失败: ") + e.what());
         }
     }
 
@@ -213,23 +252,23 @@ private:
         std::string name;
         std::string topic;
         if (!(iss >> name >> topic)) {
-            std::cout << "用法: join <发布者> <话题>\n";
+            printUsage("join <发布者> <话题>");
             return;
         }
         if (!nodeExists(name)) {
-            std::cout << "没有这个发布者: " << name << "\n";
+            printErr("没有这个发布者: " + name);
             return;
         }
         if (deleted_topics_.count(topic) != 0) {
-            std::cout << "话题 " << topic << " 已被删除，请先重新创建\n";
+            printErr("话题 " + topic + " 已被删除，请先重新创建");
             return;
         }
         if (topics_.count(topic) == 0) {
-            std::cout << "话题 " << topic << " 不存在\n";
+            printErr("话题 " + topic + " 不存在");
             return;
         }
         if (publisherBound(name, topic)) {
-            std::cout << "发布者 " << name << " 已经绑定话题 " << topic << "\n";
+            printErr("发布者 " + name + " 已经绑定话题 " + topic);
             return;
         }
 
@@ -242,7 +281,7 @@ private:
             printOk("发布者 " + name + " 已绑定话题 " + topic);
             narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
         } catch (const std::exception& e) {
-            std::cout << "绑定话题失败: " << e.what() << "\n";
+            printErr(std::string("绑定话题失败: ") + e.what());
         }
     }
 
@@ -251,22 +290,22 @@ private:
         std::string name;
         std::string topic;
         if (!(iss >> name >> topic)) {
-            std::cout << "用法: listen <订阅者> <话题>\n";
+            printUsage("listen <订阅者> <话题>");
             return;
         }
         if (pending_subscribers_.count(name) == 0) {
             if (subscribers_.count(name) != 0) {
-                std::cout << "订阅者 " << name << " 已经订阅了话题\n";
+                printErr("订阅者 " + name + " 已经订阅了话题");
             } else {
-                std::cout << "没有这个订阅者: " << name << "\n";
+                printErr("没有这个订阅者: " + name);
             }
             return;
         }
         if (topics_.count(topic) == 0) {
             if (deleted_topics_.count(topic) != 0) {
-                std::cout << "话题 " << topic << " 已被删除，请先重新创建\n";
+                printErr("话题 " + topic + " 已被删除，请先重新创建");
             } else {
-                std::cout << "话题 " << topic << " 还没有创建，不能订阅\n";
+                printErr("话题 " + topic + " 还没有创建，不能订阅");
             }
             return;
         }
@@ -279,7 +318,7 @@ private:
             printOk("订阅者 " + name + " 已订阅话题 " + topic);
             narrative("[Topic:" + topic + "] 订阅者 " + name + " 订阅了话题");
         } catch (const std::exception& e) {
-            std::cout << "订阅失败: " << e.what() << "\n";
+            printErr(std::string("订阅失败: ") + e.what());
         }
     }
 
@@ -289,23 +328,23 @@ private:
         std::string topic;
         iss >> name >> topic;
         if (name.empty() || topic.empty()) {
-            std::cout << "用法: send <发布者名字> <话题> <内容>\n";
+            printUsage("send <发布者名字> <话题> <内容>");
             return;
         }
 
         auto nodeIt = active_publishers_.find(name);
         if (nodeIt == active_publishers_.end()) {
             if (pending_publishers_.count(name) != 0) {
-                std::cout << "发布者 " << name << " 还没有绑定话题，不能发布\n";
+                printErr("发布者 " + name + " 还没有绑定话题，不能发布");
             } else {
-                std::cout << "没有这个发布者: " << name << "\n";
+                printErr("没有这个发布者: " + name);
             }
             return;
         }
 
         auto topicIt = nodeIt->second.find(topic);
         if (topicIt == nodeIt->second.end()) {
-            std::cout << "发布者 " << name << " 没有绑定话题 " << topic << "\n";
+            printErr("发布者 " + name + " 没有绑定话题 " + topic);
             return;
         }
 
@@ -318,7 +357,7 @@ private:
             content += word;
         }
         if (content.empty()) {
-            std::cout << "用法: send <发布者名字> <话题> <内容>\n";
+            printUsage("send <发布者名字> <话题> <内容>");
             return;
         }
 
@@ -341,22 +380,25 @@ private:
 
     void recv(std::istringstream& iss) {
         std::string name;
-        iss >> name;
+        if (!(iss >> name)) {
+            printUsage("recv <订阅者>");
+            return;
+        }
 
         if (pending_subscribers_.count(name) != 0) {
-            std::cout << "订阅者 " << name << " 还没有订阅话题\n";
+            printErr("订阅者 " + name + " 还没有订阅话题");
             return;
         }
 
         auto it = subscribers_.find(name);
         if (it == subscribers_.end()) {
-            std::cout << "没有这个订阅者: " << name << "\n";
+            printErr("没有这个订阅者: " + name);
             return;
         }
 
         const auto& inbox = it->second->inbox();
         if (inbox.empty()) {
-            std::cout << "订阅者 " << name << " 还没有收到消息\n";
+            printErr("订阅者 " + name + " 还没有收到消息");
             return;
         }
 
@@ -372,7 +414,7 @@ private:
         std::string type;
         std::string name;
         if (!(iss >> type >> name)) {
-            std::cout << "用法: del pub|sub|topic <名字>\n";
+            printUsage("del pub|sub|topic <名字>");
             return;
         }
 
@@ -383,21 +425,21 @@ private:
         } else if (type == "topic") {
             removeTopic(name);
         } else {
-            std::cout << "用法: del pub|sub|topic <名字>\n";
+            printUsage("del pub|sub|topic <名字>");
         }
     }
 
     void removePublisher(const std::string& name) {
         if (pending_publishers_.count(name) != 0) {
             pending_publishers_.erase(name);
-            std::cout << "已删除发布者 " << name << "（它还没有绑定话题）\n";
+            printOk("已删除发布者 " + name + "（它还没有绑定话题）");
             narrative("[Node:" + name + "] 发布者已删除");
             return;
         }
 
         auto it = active_publishers_.find(name);
         if (it == active_publishers_.end()) {
-            std::cout << "没有这个发布者: " << name << "\n";
+            printErr("没有这个发布者: " + name);
             return;
         }
 
@@ -420,25 +462,26 @@ private:
         }
         active_publishers_.erase(it);
 
-        std::cout << "已删除发布者 " << name << "（话题 ";
+        std::string topicText;
         for (std::size_t i = 0; i < topics.size(); ++i) {
-            std::cout << (i == 0 ? "" : "、") << topics[i];
+            topicText += (i == 0 ? "" : "、") + topics[i];
         }
-        std::cout << " 保留，它发过的消息仍在订阅者手里）\n";
+        printOk("已删除发布者 " + name + "（话题 " + topicText +
+                " 保留，它发过的消息仍在订阅者手里）");
         narrative("[Node:" + name + "] 发布者已删除，话题保留");
     }
 
     void removeSubscriber(const std::string& name) {
         if (pending_subscribers_.count(name) != 0) {
             pending_subscribers_.erase(name);
-            std::cout << "已删除订阅者 " << name << "（它还没有订阅话题）\n";
+            printOk("已删除订阅者 " + name + "（它还没有订阅话题）");
             narrative("[Node:" + name + "] 订阅者已删除");
             return;
         }
 
         auto it = subscribers_.find(name);
         if (it == subscribers_.end()) {
-            std::cout << "没有这个订阅者: " << name << "\n";
+            printErr("没有这个订阅者: " + name);
             return;
         }
 
@@ -447,10 +490,10 @@ private:
             it->second->shutdown();
             ros_sim::ROS::instance().unregisterSubscriber(it->second);
             subscribers_.erase(it);
-            std::cout << "已删除订阅者 " << name << "（已从话题 " << topic << " 退订）\n";
+            printOk("已删除订阅者 " + name + "（已从话题 " + topic + " 退订）");
             narrative("[Node:" + name + "] 订阅者已删除，已从话题 " + topic + " 退订");
         } catch (const std::exception& e) {
-            std::cout << "删除失败: " << e.what() << "\n";
+            printErr(std::string("删除失败: ") + e.what());
         }
     }
 
@@ -458,9 +501,9 @@ private:
         auto it = topics_.find(topic);
         if (it == topics_.end()) {
             if (deleted_topics_.count(topic) != 0) {
-                std::cout << "话题 " << topic << " 已被删除\n";
+                printErr("话题 " + topic + " 已被删除");
             } else {
-                std::cout << "没有这个话题: " << topic << "\n";
+                printErr("没有这个话题: " + topic);
             }
             return;
         }
@@ -472,7 +515,7 @@ private:
 
         topics_.erase(it);
         deleted_topics_.insert(topic);
-        std::cout << "已删除话题 " << topic << "\n";
+        printOk("已删除话题 " + topic);
         narrative("[Topic:" + topic + "] 话题已删除");
     }
 
@@ -509,47 +552,46 @@ private:
     void showTopic(std::istringstream& iss) {
         std::string topic;
         if (!(iss >> topic)) {
-            std::cout << "用法: info <话题>\n";
+            printUsage("info <话题>");
             return;
         }
 
         auto it = topics_.find(topic);
         if (it == topics_.end()) {
             if (deleted_topics_.count(topic) != 0) {
-                std::cout << "话题 " << topic << " 已被删除\n";
+                printErr("话题 " + topic + " 已被删除");
             } else {
-                std::cout << "没有这个话题: " << topic << "\n";
+                printErr("没有这个话题: " + topic);
             }
             return;
         }
 
         const TopicInfo& info = it->second;
-        std::cout << color::Cyan << color::Bold << "话题: " << topic << color::Reset << "\n";
-        std::cout << "  创建者: " << info.creator << "\n";
-        std::cout << "  发布者:\n";
+        std::cout << color::Cyan << color::Bold << "话题 " << topic << color::Reset << "\n";
+        std::cout << "  创建者    " << info.creator << "\n";
+        std::cout << "  发布者    " << info.publishers.size() << " 个";
         for (const auto& name : info.publishers) {
-            std::cout << "    " << name << "（活动中）\n";
+            std::cout << "  " << name << "(活动中)";
         }
         for (const auto& name : info.removed_publishers) {
-            std::cout << "    " << name << "（已注销）\n";
+            std::cout << "  " << name << "(已注销)";
         }
-        if (info.publishers.empty() && info.removed_publishers.empty()) {
-            std::cout << "    （无）\n";
-        }
-        std::cout << "  订阅者: " << ros_sim::ROS::instance().subscriberCount(topic) << "\n";
-        std::cout << "  消息记录: " << info.message_count << " 条\n";
+        std::cout << "\n";
+        std::cout << "  订阅者    " << ros_sim::ROS::instance().subscriberCount(topic) << " 个\n";
+        std::cout << "  消息记录  " << info.message_count << " 条\n";
     }
 
     void list() const {
-        std::cout << color::Cyan << color::Bold << "话题: " << topics_.size() << " 个"
-                  << color::Reset << "\n";
+        std::cout << color::Cyan << color::Bold << "话题 (" << topics_.size() << ")" << color::Reset
+                  << "\n";
         for (const auto& entry : topics_) {
-            std::cout << "  " << entry.first << "  创建者: " << entry.second.creator
-                      << "  发布者: " << entry.second.publishers.size()
-                      << "  订阅者: " << ros_sim::ROS::instance().subscriberCount(entry.first)
-                      << "  消息: " << entry.second.message_count << " 条";
+            std::cout << "  " << color::Bold << entry.first << color::Reset << "\n";
+            std::cout << "    创建者 " << entry.second.creator << " · 发布者 "
+                      << entry.second.publishers.size() << " · 订阅者 "
+                      << ros_sim::ROS::instance().subscriberCount(entry.first) << " · 消息 "
+                      << entry.second.message_count << " 条";
             if (!entry.second.removed_publishers.empty()) {
-                std::cout << "  已注销发布者:";
+                std::cout << " · 已注销:";
                 for (const auto& name : entry.second.removed_publishers) {
                     std::cout << " " << name;
                 }
@@ -557,14 +599,14 @@ private:
             std::cout << "\n";
         }
 
-        std::size_t publisherCount = pending_publishers_.size() + active_publishers_.size();
-        std::cout << color::Cyan << color::Bold << "发布者: " << publisherCount << " 个"
+        const std::size_t publisherCount = pending_publishers_.size() + active_publishers_.size();
+        std::cout << color::Cyan << color::Bold << "发布者 (" << publisherCount << ")"
                   << color::Reset << "\n";
         for (const auto& name : pending_publishers_) {
-            std::cout << "  " << name << " -> (还没有绑定话题)\n";
+            std::cout << "  " << name << " → (还没有绑定话题)\n";
         }
         for (const auto& node : active_publishers_) {
-            std::cout << "  " << node.first << " -> ";
+            std::cout << "  " << node.first << " → ";
             bool first = true;
             for (const auto& binding : node.second) {
                 std::cout << (first ? "" : "、") << binding.first;
@@ -573,19 +615,21 @@ private:
             std::cout << "\n";
         }
 
-        std::cout << color::Cyan << color::Bold << "订阅者: "
-                  << (pending_subscribers_.size() + subscribers_.size()) << " 个"
+        const std::size_t subscriberCount = pending_subscribers_.size() + subscribers_.size();
+        std::cout << color::Cyan << color::Bold << "订阅者 (" << subscriberCount << ")"
                   << color::Reset << "\n";
         for (const auto& name : pending_subscribers_) {
-            std::cout << "  " << name << " -> (还没有订阅话题)\n";
+            std::cout << "  " << name << " → (还没有订阅话题)\n";
         }
         for (const auto& entry : subscribers_) {
-            std::cout << "  " << entry.first << " -> " << entry.second->topic()
-                      << "（已收 " << entry.second->inbox().size() << " 条）\n";
+            std::cout << "  " << entry.first << " → " << entry.second->topic() << "（已收 "
+                      << entry.second->inbox().size() << " 条）\n";
         }
     }
 
-    static const char* stateFile() { return "console_state.txt"; }
+    static const char* stateFile() {
+        return "console_state.txt";
+    }
 
     void loadState() {
         std::ifstream in(stateFile());
@@ -663,7 +707,8 @@ private:
         }
         for (const auto& record : subRecords) {
             try {
-                auto subscriber = std::make_shared<ros_sim::Subscriber>(record.first, record.second);
+                auto subscriber =
+                    std::make_shared<ros_sim::Subscriber>(record.first, record.second);
                 subscriber->init();
                 auto inboxIt = inboxRecords.find(record.first);
                 if (inboxIt != inboxRecords.end()) {
@@ -737,15 +782,14 @@ private:
                   << "  clear                             一键清空所有话题、发布者和订阅者\n"
                   << "  list                              查看话题与节点\n"
                   << "  help                              显示帮助\n"
-                  << "  exit                              保存并退出"
-                  << color::Reset << "\n";
+                  << "  exit                              保存并退出" << color::Reset << "\n";
     }
 
     static void narrative(const std::string& text) {
         ros_sim::Logger::instance().info(text);
     }
 
-    std::map<std::string, PublisherMap> active_publishers_;   // 节点名 -> 话题 -> 发布者
+    std::map<std::string, PublisherMap> active_publishers_; // 节点名 -> 话题 -> 发布者
     std::unordered_map<std::string, std::shared_ptr<ros_sim::Subscriber>> subscribers_;
     std::set<std::string> pending_publishers_;
     std::set<std::string> pending_subscribers_;
@@ -753,11 +797,11 @@ private:
     std::map<std::string, TopicInfo> topics_;
 };
 
-}  // namespace
+} // namespace
 
 int main() {
 #ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);   // 让 Windows 控制台按 UTF-8 显示中文
+    SetConsoleOutputCP(CP_UTF8); // 让 Windows 控制台按 UTF-8 显示中文
     // 开启 ANSI 转义支持，彩色输出才能生效
     HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD mode = 0;
