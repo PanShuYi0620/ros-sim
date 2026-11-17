@@ -22,6 +22,24 @@
 
 namespace {
 
+namespace color {
+constexpr const char* Reset = "\033[0m";
+constexpr const char* Bold = "\033[1m";
+constexpr const char* Dim = "\033[90m";
+constexpr const char* Green = "\033[32m";
+constexpr const char* Cyan = "\033[36m";
+constexpr const char* Yellow = "\033[33m";
+constexpr const char* Red = "\033[31m";
+}  // namespace color
+
+void printOk(const std::string& text) {
+    std::cout << color::Green << "✔ " << color::Reset << text << "\n";
+}
+
+void printErr(const std::string& text) {
+    std::cout << color::Red << "✘ " << color::Reset << text << "\n";
+}
+
 // 交互式控制台
 // 发布者：先创建，再绑定一个或多个话题（topic 创建 / join 加入）
 // 订阅者：先创建，再通过 listen 绑定到已存在的话题
@@ -32,11 +50,18 @@ public:
     void run() {
         ros_sim::Logger::instance().setConsoleEnabled(false);
         loadState();
+
+        std::cout << color::Cyan << color::Bold
+                  << "============================================\n"
+                  << "        ros_sim 交互式控制台\n"
+                  << "   输入 help 查看命令，exit 保存并退出\n"
+                  << "============================================" << color::Reset << "\n";
         printHelp();
 
         std::string line;
         while (true) {
-            std::cout << "\n> " << std::flush;
+            std::cout << "\n" << color::Cyan << color::Bold << "> " << color::Reset
+                      << std::flush;
             if (!std::getline(std::cin, line)) {
                 break;
             }
@@ -51,7 +76,8 @@ public:
         }
 
         ros_sim::ROS::instance().shutdownAll();
-        std::cout << "已退出（状态已保存，下次启动会恢复）\n";
+        std::cout << color::Green << "✔ " << color::Reset
+                  << "已退出（状态已保存，下次启动会恢复）\n";
     }
 
 private:
@@ -115,7 +141,7 @@ private:
         }
 
         pending_publishers_.insert(name);
-        std::cout << "发布者 " << name << " 已创建（尚未绑定话题）\n";
+        printOk("发布者 " + name + " 已创建（尚未绑定话题）");
         narrative("[Node:" + name + "] 发布者已创建（尚未绑定话题）");
     }
 
@@ -132,7 +158,7 @@ private:
         }
 
         pending_subscribers_.insert(name);
-        std::cout << "订阅者 " << name << " 已创建（尚未订阅话题）\n";
+        printOk("订阅者 " + name + " 已创建（尚未订阅话题）");
         narrative("[Node:" + name + "] 订阅者已创建（尚未订阅话题）");
     }
 
@@ -167,7 +193,7 @@ private:
             active_publishers_[name][topic] = publisher;
             pending_publishers_.erase(name);
             topics_[topic] = TopicInfo{name, {name}, {}, 0};
-            std::cout << "话题 " << topic << " 已创建，创建者 " << name << "\n";
+            printOk("话题 " + topic + " 已创建，创建者 " + name);
             narrative("[Topic:" + topic + "] 话题由 " + name + " 创建");
         } catch (const std::exception& e) {
             std::cout << "创建话题失败: " << e.what() << "\n";
@@ -205,7 +231,7 @@ private:
             active_publishers_[name][topic] = publisher;
             pending_publishers_.erase(name);
             topics_[topic].publishers.push_back(name);
-            std::cout << "发布者 " << name << " 已绑定话题 " << topic << "\n";
+            printOk("发布者 " + name + " 已绑定话题 " + topic);
             narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
         } catch (const std::exception& e) {
             std::cout << "绑定话题失败: " << e.what() << "\n";
@@ -242,7 +268,7 @@ private:
             subscriber->init();
             subscribers_[name] = subscriber;
             pending_subscribers_.erase(name);
-            std::cout << "订阅者 " << name << " 已订阅话题 " << topic << "\n";
+            printOk("订阅者 " + name + " 已订阅话题 " + topic);
             narrative("[Topic:" + topic + "] 订阅者 " + name + " 订阅了话题");
         } catch (const std::exception& e) {
             std::cout << "订阅失败: " << e.what() << "\n";
@@ -294,13 +320,14 @@ private:
             if (infoIt != topics_.end()) {
                 ++infoIt->second.message_count;
             }
-            std::cout << "已发送到 " << topic << "，"
-                      << ros_sim::ROS::instance().subscriberCount(topic) << " 个订阅者收到\n";
+            printOk("已发送到 " + topic + "，" +
+                    std::to_string(ros_sim::ROS::instance().subscriberCount(topic)) +
+                    " 个订阅者收到");
             narrative("[Topic:" + topic + "] " + name + " 发布完成，共 " +
                       std::to_string(ros_sim::ROS::instance().subscriberCount(topic)) +
                       " 个订阅者收到");
         } catch (const std::exception& e) {
-            std::cout << "发布失败: " << e.what() << "\n";
+            printErr(std::string("发布失败: ") + e.what());
         }
     }
 
@@ -325,7 +352,8 @@ private:
             return;
         }
 
-        std::cout << "订阅者 " << name << " 收到 " << inbox.size() << " 条消息:\n";
+        std::cout << color::Cyan << "订阅者 " << name << " 收到 " << inbox.size()
+                  << " 条消息:" << color::Reset << "\n";
         for (const auto& message : inbox) {
             std::cout << "  " << message << "\n";
         }
@@ -430,7 +458,7 @@ private:
         }
         if (!it->second.publishers.empty() ||
             ros_sim::ROS::instance().subscriberCount(topic) != 0) {
-            std::cout << "话题 " << topic << " 还有发布者或订阅者，请先删除它们\n";
+            printErr("话题 " + topic + " 还有发布者或订阅者，请先删除它们");
             return;
         }
 
@@ -466,7 +494,7 @@ private:
         topics_.clear();
         deleted_topics_.clear();
 
-        std::cout << "已清空所有话题、发布者和订阅者\n";
+        printOk("已清空所有话题、发布者和订阅者");
         narrative("[System] 已清空全部节点与话题");
     }
 
@@ -488,7 +516,7 @@ private:
         }
 
         const TopicInfo& info = it->second;
-        std::cout << "话题: " << topic << "\n";
+        std::cout << color::Cyan << color::Bold << "话题: " << topic << color::Reset << "\n";
         std::cout << "  创建者: " << info.creator << "\n";
         std::cout << "  发布者:\n";
         for (const auto& name : info.publishers) {
@@ -505,7 +533,8 @@ private:
     }
 
     void list() const {
-        std::cout << "话题: " << topics_.size() << " 个\n";
+        std::cout << color::Cyan << color::Bold << "话题: " << topics_.size() << " 个"
+                  << color::Reset << "\n";
         for (const auto& entry : topics_) {
             std::cout << "  " << entry.first << "  创建者: " << entry.second.creator
                       << "  发布者: " << entry.second.publishers.size()
@@ -521,7 +550,8 @@ private:
         }
 
         std::size_t publisherCount = pending_publishers_.size() + active_publishers_.size();
-        std::cout << "发布者: " << publisherCount << " 个\n";
+        std::cout << color::Cyan << color::Bold << "发布者: " << publisherCount << " 个"
+                  << color::Reset << "\n";
         for (const auto& name : pending_publishers_) {
             std::cout << "  " << name << " -> (还没有绑定话题)\n";
         }
@@ -535,8 +565,9 @@ private:
             std::cout << "\n";
         }
 
-        std::cout << "订阅者: " << (pending_subscribers_.size() + subscribers_.size())
-                  << " 个\n";
+        std::cout << color::Cyan << color::Bold << "订阅者: "
+                  << (pending_subscribers_.size() + subscribers_.size()) << " 个"
+                  << color::Reset << "\n";
         for (const auto& name : pending_subscribers_) {
             std::cout << "  " << name << " -> (还没有订阅话题)\n";
         }
@@ -684,7 +715,8 @@ private:
     }
 
     void printHelp() const {
-        std::cout << "可用命令:\n"
+        std::cout << color::Yellow << color::Bold << "可用命令：" << color::Reset << "\n";
+        std::cout << color::Dim
                   << "  pub     <名字>                    创建发布者（尚未绑定话题）\n"
                   << "  sub     <名字>                    创建订阅者（尚未订阅话题）\n"
                   << "  topic   <发布者> <话题>           创建新话题并绑定\n"
@@ -697,7 +729,8 @@ private:
                   << "  clear                             一键清空所有话题、发布者和订阅者\n"
                   << "  list                              查看话题与节点\n"
                   << "  help                              显示帮助\n"
-                  << "  exit                              保存并退出\n";
+                  << "  exit                              保存并退出"
+                  << color::Reset << "\n";
     }
 
     static void narrative(const std::string& text) {
@@ -717,6 +750,12 @@ private:
 int main() {
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);   // 让 Windows 控制台按 UTF-8 显示中文
+    // 开启 ANSI 转义支持，彩色输出才能生效
+    HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD mode = 0;
+    if (output != INVALID_HANDLE_VALUE && GetConsoleMode(output, &mode)) {
+        SetConsoleMode(output, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+    }
 #endif
 
     Console console;
