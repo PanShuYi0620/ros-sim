@@ -17,7 +17,7 @@ std::string validateTopic(std::string topic) {
     return topic;
 }
 
-}  // namespace
+} // namespace
 
 Subscriber::Subscriber(std::string name, std::string topic)
     : Node(std::move(name)), topic_(validateTopic(std::move(topic))) {}
@@ -55,4 +55,4 @@ void Subscriber::restoreInbox(std::vector<std::string> messages) {
     inbox_ = std::move(messages);
 }
 
-}  // namespace ros_sim
+} // namespace ros_sim

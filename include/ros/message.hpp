@@ -5,22 +5,25 @@
 namespace ros_sim {
 
 class Message {
-public:
+  public:
     explicit Message(std::string content);
     virtual ~Message() = default;
 
-    const std::string& content() const noexcept{ return content_; }
-    const std::string& timestamp() const noexcept{ return timestamp_; }
+    const std::string& content() const noexcept {
+        return content_;
+    }
+    const std::string& timestamp() const noexcept {
+        return timestamp_;
+    }
 
     virtual std::string toString() const;
 
-protected:
+  protected:
     static std::string makeTimestamp();
 
-private:
+  private:
     std::string content_;
     std::string timestamp_;
 };
 
-}  // namespace ros_sim
-
+} // namespace ros_sim

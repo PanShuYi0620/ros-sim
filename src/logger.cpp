@@ -1,5 +1,5 @@
 #include "ros/logger.hpp"
-//引入在include，ros，logger里面写的头文件
+// 引入在include，ros，logger里面写的头文件
 #include <ctime>
 #include <filesystem>
 #include <iomanip>
@@ -17,9 +17,12 @@ Logger& Logger::instance() {
 // 2，枚举转字符串
 const char* Logger::levelName(LogLevel level) {
     switch (level) {
-    case LogLevel::Info:  return "INFO";
-    case LogLevel::Warn:  return "WARN";
-    case LogLevel::Error: return "ERROR";
+    case LogLevel::Info:
+        return "INFO";
+    case LogLevel::Warn:
+        return "WARN";
+    case LogLevel::Error:
+        return "ERROR";
     }
     return "UNKNOWN";
 }
@@ -36,8 +39,7 @@ std::string Logger::nowTimestamp() {
 // 4，核心：拼一行，打到屏幕，再写进文件
 
 void Logger::log(LogLevel level, const std::string& message) {
-    const std::string line =
-        "[" + nowTimestamp() + "] [" + levelName(level) + "] " + message;
+    const std::string line = "[" + nowTimestamp() + "] [" + levelName(level) + "] " + message;
 
     if (consoleEnabled_) {
         std::cout << line << std::endl;
@@ -65,4 +67,4 @@ void Logger::error(const std::string& message) {
     log(LogLevel::Error, message);
 }
 
-}  // namespace ros_sim
+} // namespace ros_sim

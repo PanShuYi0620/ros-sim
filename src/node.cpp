@@ -16,4 +16,4 @@ std::string Node::validateName(std::string name) {
 
 Node::Node(std::string name) : name_(validateName(std::move(name))) {}
 
-}  // namespace ros_sim
+} // namespace ros_sim

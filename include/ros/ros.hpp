@@ -15,7 +15,7 @@ namespace ros_sim {
 
 // 通信核心：单例，维护“话题→发布者 / 话题→订阅者”两张表
 class ROS final {
-public:
+  public:
     static ROS& instance();
 
     ROS(const ROS&) = delete;
@@ -37,7 +37,7 @@ public:
 
     void shutdownAll();
 
-private:
+  private:
     ROS() = default;
     ~ROS() = default;
 
@@ -48,4 +48,4 @@ private:
     std::unordered_set<std::string> nodeNames_;
 };
 
-}  // namespace ros_sim
+} // namespace ros_sim

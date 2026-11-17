@@ -29,4 +29,4 @@ std::string Message::toString() const {
     return content_ + " @ " + timestamp_;
 }
 
-}  // 用了namespace ros_sim环境
+} // namespace ros_sim

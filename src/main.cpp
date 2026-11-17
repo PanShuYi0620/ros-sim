@@ -53,13 +53,13 @@ void test_topic_exception() {
     bad_publisher->publish("这条一定会失败,用来测试程序面对错误是否会崩溃");
 }
 
-}  // namespace
+} // namespace
 
 int main() {
 #ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);   // 让 Windows 控制台按 UTF-8 显示中文，这样子运行就不会出现乱码了
+    SetConsoleOutputCP(CP_UTF8); // 让 Windows 控制台按 UTF-8 显示中文，这样子运行就不会出现乱码了
 #endif
-    //这样就代表在windows上能运行，linux上面运行不了
+    // 这样就代表在windows上能运行，linux上面运行不了
 
     auto& logger = ros_sim::Logger::instance();
 
@@ -69,19 +69,19 @@ int main() {
     } catch (const ros_sim::NodeException& e) {
         logger.error(e.what());
         return 1;
-        //程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
+        // 程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
     } catch (const ros_sim::TopicException& e) {
         logger.error(e.what());
         return 1;
-        //程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
+        // 程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
     } catch (const ros_sim::MessageException& e) {
         logger.error(e.what());
         return 1;
-        //程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
+        // 程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
     } catch (const std::exception& e) {
         logger.error(std::string("未知异常: ") + e.what());
         return 1;
-        //程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
+        // 程序遇到了错误，但是受控退出，操作系统和脚本能根据这个数字判断程序有没有出错
     }
 
     return 0;

@@ -127,4 +127,4 @@ void ROS::shutdownAll() {
     nodeNames_.clear();
 }
 
-}  // namespace ros_sim
+} // namespace ros_sim

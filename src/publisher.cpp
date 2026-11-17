@@ -17,7 +17,7 @@ std::string validateTopic(std::string topic) {
     return topic;
 }
 
-}  // namespace
+} // namespace
 
 Publisher::Publisher(std::string name, std::string topic)
     : Node(std::move(name)), topic_(validateTopic(std::move(topic))) {}
@@ -55,4 +55,4 @@ void Publisher::publish(const Message& message) {
     ROS::instance().publish(topic_, message);
 }
 
-}  // namespace ros_sim
+} // namespace ros_sim

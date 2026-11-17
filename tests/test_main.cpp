@@ -29,8 +29,7 @@ void check(bool ok, const std::string& name) {
 }
 
 // 执行 func，如果抛出指定类型的异常就返回 true
-template <typename ExceptionType, typename Func>
-bool throwsAs(Func&& func) {
+template <typename ExceptionType, typename Func> bool throwsAs(Func&& func) {
     try {
         func();
     } catch (const ExceptionType&) {
@@ -89,8 +88,7 @@ void testNormalFlow() {
     subscriber->init();
 
     check(ros_sim::ROS::instance().subscriberCount("/ok") == 1, "订阅者注册数量为 1");
-    check(!throwsAs<std::exception>([&] { publisher->publish("hello"); }),
-          "正常发布不抛异常");
+    check(!throwsAs<std::exception>([&] { publisher->publish("hello"); }), "正常发布不抛异常");
 
     ros_sim::ROS::instance().shutdownAll();
     check(ros_sim::ROS::instance().subscriberCount("/ok") == 0, "统一关闭后注册表清空");
@@ -103,11 +101,11 @@ void testSensorMessage() {
     check(msg.toString().find("温度=25.3") != std::string::npos, "toString 包含温度");
 }
 
-}  // namespace
+} // namespace
 
 int main() {
 #ifdef _WIN32
-    SetConsoleOutputCP(CP_UTF8);   // 让 Windows 控制台按 UTF-8 显示中文
+    SetConsoleOutputCP(CP_UTF8); // 让 Windows 控制台按 UTF-8 显示中文
 #endif
 
     testMessage();
