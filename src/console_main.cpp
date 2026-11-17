@@ -77,6 +77,10 @@ class Console {
             if (line.empty()) {
                 continue;
             }
+            history_.push_back(line);
+            if (history_.size() > 20) {
+                history_.erase(history_.begin());
+            }
             const bool keepGoing = handle(line);
             saveState(); // 每条命令后都保存，直接关窗口也不会丢
             if (!keepGoing) {
@@ -154,6 +158,10 @@ class Console {
         }
         if (command == "clear") {
             clearAll();
+            return true;
+        }
+        if (command == "history") {
+            showHistory();
             return true;
         }
 
@@ -419,7 +427,9 @@ class Console {
         }
 
         if (type == "pub") {
-            removePublisher(name);
+            std::string topic;
+            iss >> topic; // 可选：del pub p1 /t 只解绑一个话题
+            removePublisher(name, topic);
         } else if (type == "sub") {
             removeSubscriber(name);
         } else if (type == "topic") {
@@ -429,7 +439,7 @@ class Console {
         }
     }
 
-    void removePublisher(const std::string& name) {
+    void removePublisher(const std::string& name, const std::string& topic) {
         if (pending_publishers_.count(name) != 0) {
             pending_publishers_.erase(name);
             printOk("已删除发布者 " + name + "（它还没有绑定话题）");
@@ -443,17 +453,50 @@ class Console {
             return;
         }
 
+        // 指定了话题：只解绑这一个话题
+        if (!topic.empty()) {
+            auto binding = it->second.find(topic);
+            if (binding == it->second.end()) {
+                printErr("发布者 " + name + " 没有绑定话题 " + topic);
+                return;
+            }
+
+            try {
+                binding->second->shutdown();
+                ros_sim::ROS::instance().unregisterPublisher(binding->second);
+            } catch (const std::exception&) {
+            }
+            it->second.erase(binding);
+
+            auto infoIt = topics_.find(topic);
+            if (infoIt != topics_.end()) {
+                auto& list = infoIt->second.publishers;
+                list.erase(std::remove(list.begin(), list.end(), name), list.end());
+                infoIt->second.removed_publishers.insert(name);
+            }
+
+            if (it->second.empty()) {
+                active_publishers_.erase(it);
+                pending_publishers_.insert(name);
+                printOk("已解绑发布者 " + name + " 与话题 " + topic + "（它暂时没有话题）");
+            } else {
+                printOk("已解绑发布者 " + name + " 与话题 " + topic + "（还有其他话题）");
+            }
+            narrative("[Node:" + name + "] 已解绑话题 " + topic);
+            return;
+        }
+
         std::vector<std::string> topics;
         for (auto& binding : it->second) {
-            const std::string& topic = binding.first;
-            topics.push_back(topic);
+            const std::string& current = binding.first;
+            topics.push_back(current);
             try {
                 binding.second->shutdown();
                 ros_sim::ROS::instance().unregisterPublisher(binding.second);
             } catch (const std::exception&) {
             }
 
-            auto infoIt = topics_.find(topic);
+            auto infoIt = topics_.find(current);
             if (infoIt != topics_.end()) {
                 auto& list = infoIt->second.publishers;
                 list.erase(std::remove(list.begin(), list.end(), name), list.end());
@@ -767,6 +810,18 @@ class Console {
         }
     }
 
+    void showHistory() const {
+        if (history_.empty()) {
+            printErr("还没有执行过命令");
+            return;
+        }
+        std::cout << color::Cyan << color::Bold << "最近命令" << color::Reset << "\n";
+        std::size_t index = 1;
+        for (const auto& item : history_) {
+            std::cout << "  " << index++ << ". " << item << "\n";
+        }
+    }
+
     void printHelp() const {
         std::cout << color::Yellow << color::Bold << "可用命令：" << color::Reset << "\n";
         std::cout << color::Dim
@@ -779,6 +834,7 @@ class Console {
                   << "  recv    <订阅者>                  查看该订阅者收到的消息\n"
                   << "  del     pub|sub|topic <名字>      删除发布者 / 订阅者 / 话题\n"
                   << "  info    <话题>                    查看话题详情（含已注销发布者）\n"
+                  << "  history                            查看最近执行的命令\n"
                   << "  clear                             一键清空所有话题、发布者和订阅者\n"
                   << "  list                              查看话题与节点\n"
                   << "  help                              显示帮助\n"
@@ -794,6 +850,7 @@ class Console {
     std::set<std::string> pending_publishers_;
     std::set<std::string> pending_subscribers_;
     std::set<std::string> deleted_topics_;
+    std::vector<std::string> history_;
     std::map<std::string, TopicInfo> topics_;
 };
 
