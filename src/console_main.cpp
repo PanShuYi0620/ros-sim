@@ -26,14 +26,14 @@ namespace color {
 // Reset 只重置前景色和加粗，保留背景色
 constexpr const char* Reset = "\033[39m\033[22m";
 constexpr const char* Bold = "\033[1m";
-constexpr const char* Dim = "\033[90m";
-constexpr const char* Green = "\033[32m";
-constexpr const char* Cyan = "\033[36m";
-constexpr const char* Yellow = "\033[33m";
-constexpr const char* Red = "\033[31m";
-// 背景：中蓝色；要换颜色改这里（256 色：\033[48;5;N m，N 取 25 中蓝 / 17 深蓝 / 235 炭灰）
-constexpr const char* Background = "\033[48;5;25m";
-constexpr const char* BrightWhite = "\033[38;5;255m";
+constexpr const char* Dim = "\033[90m";    // 灰
+constexpr const char* Green = "\033[92m";  // 亮绿
+constexpr const char* Cyan = "\033[96m";   // 亮青
+constexpr const char* Yellow = "\033[93m"; // 亮黄
+constexpr const char* Red = "\033[91m";    // 亮红
+// 背景：黑色；要换颜色改这里（基础色背景：40 黑 / 44 蓝 / 47 白）
+constexpr const char* Background = "\033[40m";
+constexpr const char* BrightWhite = "\033[97m";
 } // namespace color
 
 void printOk(const std::string& text) {
