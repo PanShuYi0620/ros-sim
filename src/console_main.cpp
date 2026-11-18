@@ -31,8 +31,8 @@ constexpr const char* Green = "\033[92m";   // 亮绿
 constexpr const char* Cyan = "\033[96m";    // 亮青
 constexpr const char* Yellow = "\033[93m";  // 亮黄
 constexpr const char* Red = "\033[91m";     // 亮红
-// 蓝底黑字；要改背景：40 黑 / 44 蓝 / 47 白
-constexpr const char* Background = "\033[44m";
+// 深蓝底黑字；要改背景：40 黑 / 44 蓝 / 48;5;17 深蓝
+constexpr const char* Background = "\033[48;5;17m";
 // 纯黑文字；如果终端不认 256 色，改成 "\033[30m"
 constexpr const char* BrightWhite = "\033[38;5;16m";
 } // namespace color
