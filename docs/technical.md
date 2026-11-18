@@ -102,15 +102,20 @@ void Publisher::init() {
 
 ### 3.3 Subscriber（订阅者）
 
-订阅者的 `receive` 只做一件事：打印。
+订阅者的 `receive` 做两件事：打印日志、把消息存进消息箱（供控制台 `recv` 查看）。
 
 ```cpp
 void Subscriber::receive(const Message& message) {
     Logger::instance().info("[Node:" + name() + "] 收到消息: " + message.toString());
+
+    inbox_.push_back(message.toString());
+    if (inbox_.size() > 100) {
+        inbox_.erase(inbox_.begin());
+    }
 }
 ```
 
-这里调用的是 `toString()` 而不是 `content()`，原因见第 4.1 节。
+这里调用的是 `toString()` 而不是 `content()`，原因见第 4.1 节。消息箱最多保留 100 条，避免程序长期运行导致内存无限增长。
 
 ### 3.4 Message 与 SensorMessage
 
