@@ -26,11 +26,11 @@ namespace color {
 // Reset 只重置前景色和加粗，保留背景色
 constexpr const char* Reset = "\033[39m\033[22m";
 constexpr const char* Bold = "\033[1m";
-constexpr const char* Dim = "\033[90m";     // 灰
-constexpr const char* Green = "\033[92m";   // 亮绿
-constexpr const char* Cyan = "\033[96m";    // 亮青
-constexpr const char* Yellow = "\033[93m";  // 亮黄
-constexpr const char* Red = "\033[91m";     // 亮红
+constexpr const char* Dim = "\033[90m";    // 灰
+constexpr const char* Green = "\033[92m";  // 亮绿
+constexpr const char* Cyan = "\033[96m";   // 亮青
+constexpr const char* Yellow = "\033[93m"; // 亮黄
+constexpr const char* Red = "\033[91m";    // 亮红
 // 深蓝底黑字；要改背景：40 黑 / 44 蓝 / 48;5;17 深蓝
 constexpr const char* Background = "\033[48;5;17m";
 // 纯黑文字；如果终端不认 256 色，改成 "\033[30m"
@@ -287,6 +287,7 @@ class Console {
             active_publishers_[name][topic] = publisher;
             pending_publishers_.erase(name);
             topics_[topic].publishers.push_back(name);
+            topics_[topic].removed_publishers.erase(name);
             printOk("发布者 " + name + " 已绑定话题 " + topic);
             narrative("[Topic:" + topic + "] 发布者 " + name + " 加入了话题");
         } catch (const std::exception& e) {
@@ -704,8 +705,12 @@ class Console {
 
             const std::string& tag = fields[0];
             if (tag == "TOPIC" && fields.size() >= 4) {
-                topicRecords.emplace_back(fields[1], fields[2],
-                                          static_cast<std::size_t>(std::stoul(fields[3])));
+                try {
+                    const auto count = static_cast<std::size_t>(std::stoul(fields[3]));
+                    topicRecords.emplace_back(fields[1], fields[2], count);
+                } catch (const std::exception&) {
+                    // 状态文件里的坏记录直接跳过，不影响启动
+                }
             } else if (tag == "REMOVED" && fields.size() >= 3) {
                 removedRecords.emplace_back(fields[1], fields[2]);
             } else if (tag == "PUB" && fields.size() >= 3) {
