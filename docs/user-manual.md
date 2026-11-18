@@ -172,6 +172,7 @@ Windows 下如果双击 exe 提示缺少 DLL，是因为没把 MinGW 的 `bin` �
 | `info <话题>` | 查看话题详情（含已注销发布者） |
 | `history` | 查看最近执行的命令 |
 | `clear` | 清空所有话题与节点 |
+| `clearlog` | 清空日志文件 `logs/ros_sim.log` |
 | `list` | 查看当前状态 |
 | `help` | 显示帮助 |
 | `exit` | 保存并退出 |
