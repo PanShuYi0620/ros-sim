@@ -249,7 +249,7 @@ constexpr const char* Green = "\033[92m";
 constexpr const char* Cyan = "\033[96m";
 constexpr const char* Yellow = "\033[93m";
 constexpr const char* Red = "\033[91m";
-constexpr const char* Background = "\033[44m";
+constexpr const char* Background = "\033[48;5;17m";
 constexpr const char* BrightWhite = "\033[38;5;16m";
 }  // namespace color
 ```
@@ -260,7 +260,7 @@ constexpr const char* BrightWhite = "\033[38;5;16m";
 
 | 想改的东西 | 改这一行 | 现在的值 | 现在的效果 |
 | --- | --- | --- | --- |
-| 背景色 | `Background` | `"\033[44m"` | 蓝色 |
+| 背景色 | `Background` | `"\033[48;5;17m"` | 深蓝 |
 | 普通文字 | `BrightWhite` | `"\033[38;5;16m"` | 纯黑 |
 | 提示符和标题 | `Cyan` | `"\033[96m"` | 亮青 |
 | 成功提示 | `Green` | `"\033[92m"` | 亮绿 |
