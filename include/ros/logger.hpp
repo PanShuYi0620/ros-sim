@@ -25,6 +25,9 @@ class Logger {
         consoleEnabled_ = enabled;
     }
 
+    // 清空日志文件，返回是否成功
+    bool clearLogFile();
+
   private:
     Logger() = default;
     ~Logger() = default;

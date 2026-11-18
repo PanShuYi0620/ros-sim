@@ -157,6 +157,14 @@ class Console {
             showTopic(iss);
             return true;
         }
+        if (command == "clearlog") {
+            if (ros_sim::Logger::instance().clearLogFile()) {
+                printOk("日志已清空（logs/ros_sim.log）");
+            } else {
+                printErr("日志清空失败");
+            }
+            return true;
+        }
         if (command == "clear") {
             clearAll();
             return true;
@@ -842,6 +850,7 @@ class Console {
                   << "  info    <话题>                    查看话题详情（含已注销发布者）\n"
                   << "  history                            查看最近执行的命令\n"
                   << "  clear                             一键清空所有话题、发布者和订阅者\n"
+                  << "  clearlog                          清空日志文件\n"
                   << "  list                              查看话题与节点\n"
                   << "  help                              显示帮助\n"
                   << "  exit                              保存并退出" << color::Reset << "\n";

@@ -43,6 +43,15 @@ void Logger::log(LogLevel level, const std::string& message) {
     }
 }
 
+bool Logger::clearLogFile() {
+    if (file_.is_open()) {
+        file_.close();
+    }
+    std::filesystem::create_directories("logs");
+    std::ofstream out("logs/ros_sim.log", std::ios::trunc);
+    return out.is_open();
+}
+
 // 5，三个便捷方法，都转发给 log
 void Logger::info(const std::string& message) {
     log(LogLevel::Info, message);
