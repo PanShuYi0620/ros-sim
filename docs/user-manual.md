@@ -238,19 +238,19 @@ ros-sim
 
 #### 第 2 步：找到颜色设置
 
-在文件开头附近（大约第 15～30 行），有一段被 `namespace color { ... }` 包起来的代码：
+在文件开头附近（大约第 25～37 行），有一段被 `namespace color { ... }` 包起来的代码：
 
 ```cpp
 namespace color {
 constexpr const char* Reset = "\033[39m\033[22m";
 constexpr const char* Bold = "\033[1m";
 constexpr const char* Dim = "\033[90m";
-constexpr const char* Green = "\033[32m";
-constexpr const char* Cyan = "\033[36m";
-constexpr const char* Yellow = "\033[33m";
-constexpr const char* Red = "\033[31m";
-constexpr const char* Background = "\033[48;5;25m";
-constexpr const char* BrightWhite = "\033[38;5;255m";
+constexpr const char* Green = "\033[92m";
+constexpr const char* Cyan = "\033[96m";
+constexpr const char* Yellow = "\033[93m";
+constexpr const char* Red = "\033[91m";
+constexpr const char* Background = "\033[40m";
+constexpr const char* BrightWhite = "\033[97m";
 }  // namespace color
 ```
 
@@ -260,34 +260,43 @@ constexpr const char* BrightWhite = "\033[38;5;255m";
 
 | 想改的东西 | 改这一行 | 现在的值 | 现在的效果 |
 | --- | --- | --- | --- |
-| 背景色 | `Background` | `"\033[48;5;25m"` | 中蓝色 |
-| 普通文字 | `BrightWhite` | `"\033[38;5;255m"` | 白色 |
-| 提示符和标题 | `Cyan` | `"\033[36m"` | 青色 |
-| 成功提示 | `Green` | `"\033[32m"` | 绿色 |
-| 失败提示 | `Red` | `"\033[31m"` | 红色 |
-| 帮助标题 | `Yellow` | `"\033[33m"` | 黄色 |
+| 背景色 | `Background` | `"\033[40m"` | 黑色 |
+| 普通文字 | `BrightWhite` | `"\033[97m"` | 亮白色 |
+| 提示符和标题 | `Cyan` | `"\033[96m"` | 亮青 |
+| 成功提示 | `Green` | `"\033[92m"` | 亮绿 |
+| 失败提示 | `Red` | `"\033[91m"` | 亮红 |
+| 帮助标题 | `Yellow` | `"\033[93m"` | 亮黄 |
 | 灰色说明 | `Dim` | `"\033[90m"` | 灰色 |
 
 #### 第 4 步：改数字
 
-**背景色**的格式是 `"\033[48;5;数字m"`，只改最后的数字：
+现在默认用**基础 16 色**，格式是 `"\033[4Xm"`（背景）或 `"\033[3Xm"`（文字），X 取 0～7：
 
 ```cpp
-constexpr const char* Background = "\033[48;5;25m";
-//                                        ↑
-//                                    改这个数字
+constexpr const char* Background = "\033[40m";
+//                                    ↑
+//                                改这个数字
 ```
-
-常用背景色编号：
 
 | 数字 | 颜色 | 数字 | 颜色 |
 | --- | --- | --- | --- |
-| 25 | 中蓝（默认） | 234 | 近黑 |
-| 17 | 深蓝 | 235 | 炭灰 |
-| 22 | 深绿 | 52 | 深红棕 |
+| 40 | 黑 | 44 | 蓝 |
+| 41 | 红 | 45 | 品红 |
+| 42 | 绿 | 46 | 青 |
+| 43 | 黄 | 47 | 白 |
+
+> 也支持 256 色，格式 `"\033[48;5;数字m"`（背景）或 `"\033[38;5;数字m"`（文字），但部分终端不认，基础 16 色兼容性最好。
+
+如果要用 256 色，常用背景编号如下（兼容性不如基础色）：
+
+| 数字 | 颜色 | 数字 | 颜色 |
+| --- | --- | --- | --- |
+| 232 | 近黑 | 234 | 近黑 |
+| 25 | 中蓝 | 235 | 炭灰 |
+| 17 | 深蓝 | 52 | 深红棕 |
 | 53 | 深紫 | 233 | 深灰偏黑 |
 
-**文字颜色**的格式短一些，例如 `"\033[32m"`：
+**文字颜色**基础色对照（30～37；加 60 变亮，例如 90 灰、91 亮红、92 亮绿、97 亮白）：
 
 | 数字 | 颜色 | 数字 | 颜色 |
 | --- | --- | --- | --- |
@@ -299,7 +308,7 @@ constexpr const char* Background = "\033[48;5;25m";
 比如想把成功提示从绿色改成蓝色，就把 `Green` 那一行改成：
 
 ```cpp
-constexpr const char* Green = "\033[34m";
+constexpr const char* Green = "\033[94m";
 ```
 
 #### 第 5 步：保存并重新编译
